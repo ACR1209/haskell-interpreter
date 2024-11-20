@@ -1,0 +1,6 @@
+x = 10
+y = "Hello"
+print x
+print y
+z = y + " World"
+print z

@@ -1,0 +1,32 @@
+name: Haskell CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.stack-work
+          key: ${{ runner.os }}-${{ hashFiles('stack.yaml.lock') }}
+      - name: Check out ghc
+        run: ghcup list --tool ghc --hide-old
+      - name: Install GHC
+        run: ghcup install ghc 9.6.6 --set
+      - name: Setting stack to use system GHC 
+        run: stack config set system-ghc true
+      - name: Setting stack to not install GHC 
+        run: stack config set install-ghc false
+      - name: Install dependencies
+        run: stack build --haddock --allow-newer
+      - name: Build tests
+        run: stack build --test --no-run-tests --allow-newer
+      - name: Run tests
+        run: stack test
