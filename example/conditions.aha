@@ -1,0 +1,23 @@
+print "Greater than"
+print 5 > 1
+print 5 > 6
+
+print "Less than"
+print 5 < 1
+print 5 < 6
+
+print "Equal to"
+print 5 == 1
+print 5 == 6
+
+print "Not equal to"
+print 5 != 1
+print 5 != 6
+
+print "Greater than or equal to"
+print 5 >= 1
+print 5 >= 6
+
+print "Less than or equal to"
+print 5 <= 1
+print 5 <= 6

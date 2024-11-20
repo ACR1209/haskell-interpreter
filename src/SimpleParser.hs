@@ -16,6 +16,13 @@ data Expr
     | Assign String Expr
     | If Expr [Expr] [Expr] 
     | Print Expr
+    | ForLoop Expr Expr Expr [Expr]
+    | Eq Expr Expr  -- Equal (==)
+    | Neq Expr Expr -- Not equal( !=)
+    | Lt Expr Expr -- Less than (<)
+    | Gt Expr Expr -- Greater than (>)
+    | Le Expr Expr -- Less or Equal (<=)
+    | Ge Expr Expr -- Greater or Equal (>=)
     deriving (Show, Eq)
 
 token :: Parser a -> Parser a
@@ -34,7 +41,16 @@ stringLiteral :: Parser String
 stringLiteral = token $ char '"' *> many (noneOf "\"") <* char '"'
 
 expr :: Parser Expr
-expr = try term `chainl1` addSubOp
+expr = try comparison `chainl1` addSubOp
+
+comparison :: Parser Expr
+comparison = try (Eq <$> term <* symbol "==" <*> term)
+        <|> try (Neq <$> term <* symbol "!=" <*> term)
+        <|> try (Lt <$> term <* symbol "<" <*> term)
+        <|> try (Gt <$> term <* symbol ">" <*> term)
+        <|> try (Le <$> term <* symbol "<=" <*> term)
+        <|> try (Ge <$> term <* symbol ">=" <*> term)
+        <|> term  
 
 term :: Parser Expr
 term = factor `chainl1` mulDivOp
@@ -57,6 +73,7 @@ mulDivOp =   (Mul <$ symbol "*")
 statement :: Parser Expr
 statement =
         try assignment
+    <|> forStatement
     <|> ifStatement
     <|> printStatement
 
@@ -79,6 +96,21 @@ ifStatement = do
         _ <- symbol "{"
         many statement <* symbol "}"
     return $ If cond thenBranch elseBranch
+
+forStatement :: Parser Expr
+forStatement = do
+    _ <- symbol "for"
+    _ <- symbol "("
+    counterVariable <- assignment  
+    _ <- symbol ";"
+    cond <- expr  
+    _ <- symbol ";"
+    incr <- assignment  
+    _ <- symbol ")"
+    _ <- symbol "{"
+    body <- many statement  
+    _ <- symbol "}"
+    return $ ForLoop counterVariable cond incr body
 
 printStatement :: Parser Expr
 printStatement = do

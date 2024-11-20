@@ -9,6 +9,7 @@ import Control.Monad.State
 type Env = Map.Map String (Either Int String)
 type Interpreter a = ExceptT String (StateT Env IO) a
 
+-- TODO: Maybe Either is not the best type to use here, check a better way of doing it to allow more primitive types
 eval :: Expr -> Interpreter (Either Int String)
 eval (Var name) = do
     env <- get
@@ -71,6 +72,84 @@ eval (Print express) = do
         Right s -> liftIO $ putStrLn s   
     return $ Left 0                      
 
+eval (Eq exp1 exp2) = do
+    v1 <- eval exp1
+    v2 <- eval exp2
+
+    case (v1, v2) of
+        -- TODO: Change to BoolLit when implemented
+        (Left r1, Left r2) -> return $ Left (if r1 == r2 then 1 else 0) 
+        (Right r1, Right r2) -> return $ Left (if r1 == r2 then 1 else 0) 
+        _ -> throwError $ "Cannot compare the two values (==), v1: " ++ show v1 ++ "; v2: " ++ show v2
+
+
+eval (Neq exp1 exp2) = do
+    v1 <- eval exp1
+    v2 <- eval exp2
+
+    case (v1, v2) of
+        -- TODO: Change to BoolLit when implemented
+        (Left r1, Left r2) -> return $ Left (if r1 /= r2 then 1 else 0) 
+        (Right r1, Right r2) -> return $ Left (if r1 /= r2 then 1 else 0)
+        _ -> throwError $ "Cannot compare the two values (!=), v1: " ++ show v1 ++ "; v2: " ++ show v2
+
+eval (Lt exp1 exp2) = do
+    v1 <- eval exp1
+    v2 <- eval exp2
+
+    case (v1, v2) of
+        -- TODO: Change to BoolLit when implemented
+        (Left r1, Left r2) -> return $ Left (if r1 < r2 then 1 else 0) 
+        _ -> throwError $ "Cannot compare the two values (<), v1: " ++ show v1 ++ "; v2: " ++ show v2
+
+eval (Gt exp1 exp2) = do
+    v1 <- eval exp1
+    v2 <- eval exp2
+
+    case (v1, v2) of
+        -- TODO: Change to BoolLit when implemented
+        (Left r1, Left r2) -> return $ Left (if r1 > r2 then 1 else 0) 
+        _ -> throwError $ "Cannot compare the two values (>), v1: " ++ show v1 ++ "; v2: " ++ show v2
+
+eval (Le exp1 exp2) = do
+    v1 <- eval exp1
+    v2 <- eval exp2
+
+    case (v1, v2) of
+        -- TODO: Change to BoolLit when implemented
+        (Left r1, Left r2) -> return $ Left (if r1 <= r2 then 1 else 0) 
+        _ -> throwError $ "Cannot compare the two values (<=), v1: " ++ show v1 ++ "; v2: " ++ show v2
+
+
+eval (Ge exp1 exp2) = do
+    v1 <- eval exp1
+    v2 <- eval exp2
+
+    case (v1, v2) of
+        -- TODO: Change to BoolLit when implemented
+        (Left r1, Left r2) -> return $ Left (if r1 >= r2 then 1 else 0) 
+        _ -> throwError $ "Cannot compare the two values (>=), v1: " ++ show v1 ++ "; v2: " ++ show v2
+
+eval (ForLoop counterVariable cond incr body) = do
+    _ <- eval counterVariable
+    
+    evalForLoop cond incr body
+
+
+evalForLoop :: Expr -> Expr -> [Expr] -> Interpreter (Either Int String)
+evalForLoop cond incr body = do
+    condVal <- eval cond
+    case condVal of
+        Left n -> do
+            if n == 0
+                then return $ Left 0
+                else do
+                    _ <- evalBlock body
+                    _ <- eval incr
+
+                    evalForLoop cond incr body
+        
+        _ -> throwError "Condition must evaluate to an integer"
 
 evalBlock :: [Expr] -> Interpreter (Either Int String)
 evalBlock = foldM (\_ express -> eval express) (Left 0)
