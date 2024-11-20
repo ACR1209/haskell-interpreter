@@ -23,6 +23,7 @@ data Expr
     | Gt Expr Expr -- Greater than (>)
     | Le Expr Expr -- Less or Equal (<=)
     | Ge Expr Expr -- Greater or Equal (>=)
+    | BoolLit Bool 
     deriving (Show, Eq)
 
 token :: Parser a -> Parser a
@@ -39,6 +40,9 @@ integer = token $ read <$> many1 digit
 
 stringLiteral :: Parser String
 stringLiteral = token $ char '"' *> many (noneOf "\"") <* char '"'
+
+boolLiteral :: Parser Bool
+boolLiteral = token $ (True <$ string "true") <|> (False <$ string "false")
 
 expr :: Parser Expr
 expr = try comparison `chainl1` addSubOp
@@ -57,7 +61,8 @@ term = factor `chainl1` mulDivOp
 
 factor :: Parser Expr
 factor =
-        Var <$> identifier
+    BoolLit <$> boolLiteral
+    <|> Var <$> identifier
     <|> IntLit <$> integer
     <|> StrLit <$> stringLiteral
     <|> between (symbol "(") (symbol ")") expr

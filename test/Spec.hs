@@ -22,6 +22,10 @@ main = hspec $ do
         parseProgram "x = \"hello\" + \"world\"" `shouldBe` Right [Assign "x" (Add (StrLit "hello") (StrLit "world"))]
       it "should parse expression with parentheses" $ do
         parseProgram "x = (42 + 10) * 2" `shouldBe` Right [Assign "x" (Mul (Add (IntLit 42) (IntLit 10)) (IntLit 2))]
+      it "should parse the true boolean" $ do
+        parseProgram "x = true" `shouldBe` Right [Assign "x" (BoolLit True)]
+      it "should parse the false boolean" $ do
+        parseProgram "x = false" `shouldBe` Right [Assign "x" (BoolLit False)]
 
     describe "If statement" $ do
       it "should parse if statement" $ do
@@ -66,37 +70,37 @@ main = hspec $ do
       it "should evaluate integer assignment" $ do
           let exprs = [Assign "x" (IntLit 42)]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 42)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42)])
 
       it "should evaluate string assignment" $ do
           let exprs = [Assign "x" (StrLit "hello")]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Right "hello")])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "hello")])
 
       it "should evaluate addition of integers" $ do
           let exprs = [Assign "x" (Add (IntLit 42) (IntLit 10))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 52)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 52)])
 
       it "should evaluate string concatenation" $ do
           let exprs = [Assign "x" (Add (StrLit "hello") (StrLit "world"))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Right "helloworld")])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "helloworld")])
 
       it "should evaluate subtraction of integers" $ do
           let exprs = [Assign "x" (Sub (IntLit 42) (IntLit 10))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 32)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 32)])
 
       it "should evaluate multiplication of integers" $ do
           let exprs = [Assign "x" (Mul (IntLit 42) (IntLit 10))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 420)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 420)])
 
       it "should evaluate division of integers" $ do
           let exprs = [Assign "x" (Div (IntLit 42) (IntLit 10))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 4)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 4)])
 
       it "should handle division by zero" $ do
           let exprs = [Assign "x" (Div (IntLit 42) (IntLit 0))]
@@ -106,12 +110,12 @@ main = hspec $ do
       it "should recover string variables" $ do
           let exprs = [Assign "x" (StrLit "hello"), Var "x"]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Right "hello")])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "hello")])
 
       it "should recover integer variables" $ do
           let exprs = [Assign "x" (IntLit 42), Var "x"]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 42)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42)])
 
       it "should throw error if the variables is not defined" $ do
           let exprs = [Var "x"]
@@ -142,109 +146,144 @@ main = hspec $ do
       it "should evaluate if statement with true condition" $ do
           let exprs = [Assign "x" (IntLit 1), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 1), ("y", Left 42)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 1), ("y", IntVal 42)])
 
+      it "should evaluate with bools" $ do
+          let exprs = [Assign "x" (BoolLit True), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True), ("y", IntVal 42)])
+
+      it "should consider an empty string falsy" $ do
+          let exprs = [Assign "x" (StrLit ""), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal ""), ("y", IntVal 0)])
+      
+      it "should consider a non-empty string truthy" $ do
+          let exprs = [Assign "x" (StrLit "hello"), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "hello"), ("y", IntVal 42)])
+      
       it "should evaluate if statement with false condition" $ do
           let exprs = [Assign "x" (IntLit 0), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 0), ("y", Left 0)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 0), ("y", IntVal 0)])
 
     describe "Print statement" $ do
       it "should evaluate print statement" $ do
           let exprs = [Print (IntLit 42)]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.empty)
+          result `shouldBe` Right (IntVal 0, Map.empty)
     
     describe "Comparison operators" $ do
-      it "should evaluate equality operator (==) to 1 if both items are equal for ints" $ do
+      it "should evaluate equality operator (==) to true if both items are equal for ints" $ do
           let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 42), Assign "z" (Eq (Var "x") (Var "y"))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 42), ("z", Left 1)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 42), ("z", BoolVal True)])
 
-      it "should evaluate equality operator (==) to 0 if both items are not equal for ints" $ do
+      it "should evaluate equality operator (==) to false if both items are not equal for ints" $ do
           let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 43), Assign "z" (Eq (Var "x") (Var "y"))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 43), ("z", Left 0)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 43), ("z", BoolVal False)])
 
-      it "should evaluate equality operator (==) to 1 if both items are equal for strings" $ do
+      it "should evaluate equality operator (==) to true if both items are equal for strings" $ do
           let exprs = [Assign "x" (StrLit "hello"), Assign "y" (StrLit "hello"), Assign "z" (Eq (Var "x") (Var "y"))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Right "hello"), ("y", Right "hello"), ("z", Left 1)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "hello"), ("y", StrVal "hello"), ("z", BoolVal True)])
       
-      it "should evaluate equality operator (==) to 0 if both items are not equal for strings" $ do
+      it "should evaluate equality operator (==) to false if both items are not equal for strings" $ do
           let exprs = [Assign "x" (StrLit "hello"), Assign "y" (StrLit "world"), Assign "z" (Eq (Var "x") (Var "y"))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Right "hello"), ("y", Right "world"), ("z", Left 0)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "hello"), ("y", StrVal "world"), ("z", BoolVal False)])
 
-      it "should evaluate inequality operator (!=) to 1 if both items are not equal for ints" $ do
+      it "should evaluate equality operator (==) to true if both items are equal for booleans" $ do
+          let exprs = [Assign "x" (BoolLit True), Assign "y" (BoolLit True), Assign "z" (Eq (Var "x") (Var "y"))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True), ("y", BoolVal True), ("z", BoolVal True)])
+      
+      it "should evaluate equality operator (==) to false if both items are not equal for booleans" $ do
+          let exprs = [Assign "x" (BoolLit True), Assign "y" (BoolLit False), Assign "z" (Eq (Var "x") (Var "y"))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True), ("y", BoolVal False), ("z", BoolVal False)])
+
+      it "should evaluate inequality operator (!=) to true if both items are not equal for ints" $ do
           let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 43), Assign "z" (Neq (Var "x") (Var "y"))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 43), ("z", Left 1)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 43), ("z", BoolVal True)])
       
-      it "should evaluate inequality operator (!=) to 0 if both items are equal for ints" $ do
+      it "should evaluate inequality operator (!=) to false if both items are equal for ints" $ do
           let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 42), Assign "z" (Neq (Var "x") (Var "y"))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 42), ("z", Left 0)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 42), ("z", BoolVal False)])
 
-      it "should evaluate inequality operator (!=) to 1 if both items are not equal for strings" $ do
+      it "should evaluate inequality operator (!=) to true if both items are not equal for strings" $ do
           let exprs = [Assign "x" (StrLit "hello"), Assign "y" (StrLit "world"), Assign "z" (Neq (Var "x") (Var "y"))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Right "hello"), ("y", Right "world"), ("z", Left 1)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "hello"), ("y", StrVal "world"), ("z", BoolVal True)])
       
-      it "should evaluate inequality operator (!=) to 0 if both items are equal for strings" $ do
+      it "should evaluate inequality operator (!=) to false if both items are equal for strings" $ do
           let exprs = [Assign "x" (StrLit "hello"), Assign "y" (StrLit "hello"), Assign "z" (Neq (Var "x") (Var "y"))]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Right "hello"), ("y", Right "hello"), ("z", Left 0)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "hello"), ("y", StrVal "hello"), ("z", BoolVal False)])
 
-      it "should evaluate less than operator (<) to 1 if left item is less than right item for ints" $ do
+      it "should evaluate inequality operator (!=) to false if both items are equal for booleans" $ do
+          let exprs = [Assign "x" (BoolLit True), Assign "y" (BoolLit True), Assign "z" (Neq (Var "x") (Var "y"))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True), ("y", BoolVal True), ("z", BoolVal False)])
+
+      it "should evaluate inequality operator (!=) to true if both items are not equal for booleans" $ do
+          let exprs = [Assign "x" (BoolLit True), Assign "y" (BoolLit False), Assign "z" (Neq (Var "x") (Var "y"))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True), ("y", BoolVal False), ("z", BoolVal True)])
+
+      it "should evaluate less than operator (<) to true if left item is less than right item for ints" $ do
         let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 43), Assign "z" (Lt (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 43), ("z", Left 1)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 43), ("z", BoolVal True)])
 
-      it "should evaluate less than operator (<) to 0 if left item is not less than right item for ints" $ do
+      it "should evaluate less than operator (<) to false if left item is not less than right item for ints" $ do
         let exprs = [Assign "x" (IntLit 43), Assign "y" (IntLit 42), Assign "z" (Lt (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 43), ("y", Left 42), ("z", Left 0)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 43), ("y", IntVal 42), ("z", BoolVal False)])
 
-      it "should evaluate greater than operator (>) to 1 if left item is greater than right item for ints" $ do
+      it "should evaluate greater than operator (>) to true if left item is greater than right item for ints" $ do
         let exprs = [Assign "x" (IntLit 43), Assign "y" (IntLit 42), Assign "z" (Gt (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 43), ("y", Left 42), ("z", Left 1)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 43), ("y", IntVal 42), ("z", BoolVal True)])
 
-      it "should evaluate greater than operator (>) to 0 if left item is not greater than right item for ints" $ do
+      it "should evaluate greater than operator (>) to false if left item is not greater than right item for ints" $ do
         let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 43), Assign "z" (Gt (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 43), ("z", Left 0)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 43), ("z", BoolVal False)])
 
-      it "should evaluate greater than or equal operator (>=) to 1 if left item is greater than or equal to right item for ints" $ do
+      it "should evaluate greater than or equal operator (>=) to true if left item is greater than or equal to right item for ints" $ do
         let exprs = [Assign "x" (IntLit 43), Assign "y" (IntLit 42), Assign "z" (Ge (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 43), ("y", Left 42), ("z", Left 1)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 43), ("y", IntVal 42), ("z", BoolVal True)])
 
-      it "should evaluate greater than or equal operator (>=) to 1 if left item is equal to right item for ints" $ do
+      it "should evaluate greater than or equal operator (>=) to true if left item is equal to right item for ints" $ do
         let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 42), Assign "z" (Ge (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 42), ("z", Left 1)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 42), ("z", BoolVal True)])
 
-      it "should evaluate greater than or equal operator (>=) to 0 if left item is not greater than or equal to right item for ints" $ do
+      it "should evaluate greater than or equal operator (>=) to false if left item is not greater than or equal to right item for ints" $ do
         let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 43), Assign "z" (Ge (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 43), ("z", Left 0)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 43), ("z", BoolVal False)])
 
-      it "should evaluate less than or equal operator (<=) to 1 if left item is less than or equal to right item for ints" $ do
+      it "should evaluate less than or equal operator (<=) to true if left item is less than or equal to right item for ints" $ do
         let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 43), Assign "z" (Le (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 43), ("z", Left 1)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 43), ("z", BoolVal True)])
 
-      it "should evaluate less than or equal operator (<=) to 1 if left item is equal to right item for ints" $ do
+      it "should evaluate less than or equal operator (<=) to true if left item is equal to right item for ints" $ do
         let exprs = [Assign "x" (IntLit 42), Assign "y" (IntLit 42), Assign "z" (Le (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 42), ("y", Left 42), ("z", Left 1)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42), ("y", IntVal 42), ("z", BoolVal True)])
 
-      it "should evaluate less than or equal operator (<=) to 0 if left item is not less than or equal to right item for ints" $ do
+      it "should evaluate less than or equal operator (<=) to false if left item is not less than or equal to right item for ints" $ do
         let exprs = [Assign "x" (IntLit 43), Assign "y" (IntLit 42), Assign "z" (Le (Var "x") (Var "y"))]
         result <- runInterpreter Map.empty exprs
-        result `shouldBe` Right (0, Map.fromList [("x", Left 43), ("y", Left 42), ("z", Left 0)])
+        result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 43), ("y", IntVal 42), ("z", BoolVal False)])
 
       it "should throw error when using the equal operator (==) on two different types" $ do
         let exprs = [Eq (IntLit 42) (StrLit "hello")]
@@ -300,5 +339,5 @@ main = hspec $ do
       it "should evaluate a for loop" $ do
           let exprs = [ForLoop (Assign "x" (IntLit 0)) (Lt (Var "x") (IntLit 2)) (Assign "x" (Add (Var "x") (IntLit 1))) []]
           result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (0, Map.fromList [("x", Left 2)])
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 2)])
     

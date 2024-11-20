@@ -6,51 +6,58 @@ import Control.Monad.Except
 import Control.Monad (foldM)
 import Control.Monad.State
 
-type Env = Map.Map String (Either Int String)
+
+data Value =
+    IntVal Int
+    | StrVal String
+    | BoolVal Bool
+    | NullVal
+    deriving (Show, Eq)
+
+type Env = Map.Map String Value
 type Interpreter a = ExceptT String (StateT Env IO) a
 
--- TODO: Maybe Either is not the best type to use here, check a better way of doing it to allow more primitive types
-eval :: Expr -> Interpreter (Either Int String)
+eval :: Expr -> Interpreter Value
 eval (Var name) = do
     env <- get
     case Map.lookup name env of
-        Just (Left intVal) -> return $ Left intVal
-        Just (Right strVal) -> return $ Right strVal
+        Just val -> return val
         Nothing -> throwError $ "Undefined variable: " ++ name
 
-eval (IntLit n) = return $ Left n
-eval (StrLit s) = return $ Right s
+eval (IntLit n) = return $ IntVal n
+eval (StrLit s) = return $ StrVal s
+eval (BoolLit val) = return $ BoolVal (val)
 
 eval (Add e1 e2) = do
     v1 <- eval e1
     v2 <- eval e2
     case (v1, v2) of
-        (Left n1, Left n2) -> return $ Left (n1 + n2)
-        (Right s1, Right s2) -> return $ Right (s1 ++ s2) 
+        (IntVal n1, IntVal n2) -> return $ IntVal (n1 + n2)
+        (StrVal s1, StrVal s2) -> return $ StrVal (s1 ++ s2) 
         _ -> throwError "Type mismatch in addition"
 
 eval (Sub e1 e2) = do
     v1 <- eval e1
     v2 <- eval e2
     case (v1, v2) of
-        (Left n1, Left n2) -> return $ Left (n1 - n2)
+        (IntVal n1, IntVal n2) -> return $ IntVal (n1 - n2)
         _ -> throwError "Type mismatch in subtraction"
 
 eval (Mul e1 e2) = do
     v1 <- eval e1
     v2 <- eval e2
     case (v1, v2) of
-        (Left n1, Left n2) -> return $ Left (n1 * n2)
+        (IntVal n1, IntVal n2) -> return $ IntVal (n1 * n2)
         _ -> throwError "Type mismatch in multiplication"
 
 eval (Div e1 e2) = do
     v1 <- eval e1
     v2 <- eval e2
     case (v1, v2) of
-        (Left n1, Left n2) ->
+        (IntVal n1, IntVal n2) ->
             if n2 == 0
                 then throwError "Division by zero"
-                else return $ Left (n1 `div` n2)
+                else return $ IntVal (n1 `div` n2)
         _ -> throwError "Type mismatch in division"
 
 eval (Assign name express) = do
@@ -61,25 +68,27 @@ eval (Assign name express) = do
 eval (If cond thenBranch elseBranch) = do
     condVal <- eval cond
     case condVal of
-        Left n | n /= 0 -> evalBlock thenBranch
-        Left _ -> evalBlock elseBranch
-        _ -> throwError "Condition must evaluate to an integer"
+        BoolVal n | n /= False -> evalBlock thenBranch
+        BoolVal _ -> evalBlock elseBranch
+        IntVal n | n /= 0 -> evalBlock thenBranch
+        IntVal _ -> evalBlock elseBranch
+        StrVal n | n /= "" -> evalBlock thenBranch
+        StrVal _ -> evalBlock elseBranch
+        _ -> throwError "Error while evaluating if: invalid condition"
 
 eval (Print express) = do
     val <- eval express
-    case val of
-        Left n -> liftIO $ print n       
-        Right s -> liftIO $ putStrLn s   
-    return $ Left 0                      
+    liftIO $ putStrLn (valueToString val)
+    return NullVal
 
 eval (Eq exp1 exp2) = do
     v1 <- eval exp1
     v2 <- eval exp2
 
     case (v1, v2) of
-        -- TODO: Change to BoolLit when implemented
-        (Left r1, Left r2) -> return $ Left (if r1 == r2 then 1 else 0) 
-        (Right r1, Right r2) -> return $ Left (if r1 == r2 then 1 else 0) 
+        (IntVal r1, IntVal r2) -> return $ BoolVal (r1 == r2) 
+        (StrVal r1, StrVal r2) -> return $ BoolVal (r1 == r2) 
+        (BoolVal r1, BoolVal r2) -> return $ BoolVal (r1 == r2)
         _ -> throwError $ "Cannot compare the two values (==), v1: " ++ show v1 ++ "; v2: " ++ show v2
 
 
@@ -88,9 +97,9 @@ eval (Neq exp1 exp2) = do
     v2 <- eval exp2
 
     case (v1, v2) of
-        -- TODO: Change to BoolLit when implemented
-        (Left r1, Left r2) -> return $ Left (if r1 /= r2 then 1 else 0) 
-        (Right r1, Right r2) -> return $ Left (if r1 /= r2 then 1 else 0)
+        (IntVal r1, IntVal r2) -> return $ BoolVal (r1 /= r2) 
+        (StrVal r1, StrVal r2) -> return $ BoolVal (r1 /= r2)
+        (BoolVal r1, BoolVal r2) -> return $ BoolVal (r1 /= r2)
         _ -> throwError $ "Cannot compare the two values (!=), v1: " ++ show v1 ++ "; v2: " ++ show v2
 
 eval (Lt exp1 exp2) = do
@@ -98,8 +107,7 @@ eval (Lt exp1 exp2) = do
     v2 <- eval exp2
 
     case (v1, v2) of
-        -- TODO: Change to BoolLit when implemented
-        (Left r1, Left r2) -> return $ Left (if r1 < r2 then 1 else 0) 
+        (IntVal r1, IntVal r2) -> return $ BoolVal (r1 < r2) 
         _ -> throwError $ "Cannot compare the two values (<), v1: " ++ show v1 ++ "; v2: " ++ show v2
 
 eval (Gt exp1 exp2) = do
@@ -107,8 +115,7 @@ eval (Gt exp1 exp2) = do
     v2 <- eval exp2
 
     case (v1, v2) of
-        -- TODO: Change to BoolLit when implemented
-        (Left r1, Left r2) -> return $ Left (if r1 > r2 then 1 else 0) 
+        (IntVal r1, IntVal r2) -> return $ BoolVal (r1 > r2) 
         _ -> throwError $ "Cannot compare the two values (>), v1: " ++ show v1 ++ "; v2: " ++ show v2
 
 eval (Le exp1 exp2) = do
@@ -116,18 +123,15 @@ eval (Le exp1 exp2) = do
     v2 <- eval exp2
 
     case (v1, v2) of
-        -- TODO: Change to BoolLit when implemented
-        (Left r1, Left r2) -> return $ Left (if r1 <= r2 then 1 else 0) 
+        (IntVal r1, IntVal r2) -> return $ BoolVal (r1 <= r2) 
         _ -> throwError $ "Cannot compare the two values (<=), v1: " ++ show v1 ++ "; v2: " ++ show v2
-
 
 eval (Ge exp1 exp2) = do
     v1 <- eval exp1
     v2 <- eval exp2
 
     case (v1, v2) of
-        -- TODO: Change to BoolLit when implemented
-        (Left r1, Left r2) -> return $ Left (if r1 >= r2 then 1 else 0) 
+        (IntVal r1, IntVal r2) -> return $ BoolVal (r1 >= r2) 
         _ -> throwError $ "Cannot compare the two values (>=), v1: " ++ show v1 ++ "; v2: " ++ show v2
 
 eval (ForLoop counterVariable cond incr body) = do
@@ -135,29 +139,33 @@ eval (ForLoop counterVariable cond incr body) = do
     
     evalForLoop cond incr body
 
-
-evalForLoop :: Expr -> Expr -> [Expr] -> Interpreter (Either Int String)
+evalForLoop :: Expr -> Expr -> [Expr] -> Interpreter Value
 evalForLoop cond incr body = do
     condVal <- eval cond
     case condVal of
-        Left n -> do
-            if n == 0
-                then return $ Left 0
+        BoolVal n -> do
+            if n == False
+                then return $ BoolVal False
                 else do
                     _ <- evalBlock body
                     _ <- eval incr
 
                     evalForLoop cond incr body
         
-        _ -> throwError "Condition must evaluate to an integer"
+        _ -> throwError "Error while evaluating for loop: invalid condition"
 
-evalBlock :: [Expr] -> Interpreter (Either Int String)
-evalBlock = foldM (\_ express -> eval express) (Left 0)
+evalBlock :: [Expr] -> Interpreter Value
+evalBlock = foldM (\_ exprs -> eval exprs) NullVal
 
-runInterpreter :: Env -> [Expr] -> IO (Either String (Int, Env))
+valueToString :: Value -> String
+valueToString (IntVal n)   = show n
+valueToString (StrVal s)   = s
+valueToString (BoolVal b)  = if b then "true" else "false"
+valueToString NullVal      = "null"
+
+runInterpreter :: Env -> [Expr] -> IO (Either String (Value, Env))
 runInterpreter initialEnv exprs = do
     (result, finalEnv) <- runStateT (runExceptT (evalBlock exprs)) initialEnv
     return $ case result of
         Left err -> Left err
-        Right (Left _) -> Right (0, finalEnv)
-        Right (Right _) -> Right (0, finalEnv)
+        Right _ -> Right (IntVal 0, finalEnv) -- return val 0 meaning good exit code
