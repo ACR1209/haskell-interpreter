@@ -10,6 +10,8 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Variable assignments
 - Simple conditional
 - Printing values
+- Looping (for loop)
+- Conditional operators (<,>,>=,<=)
 
 ## Examples
 
@@ -44,4 +46,38 @@ print x
 print y
 z = y + " World"
 print z
+```
+
+### For loop
+```
+for (x = 0; x < 10; x = x + 1) {
+    print x
+}
+```
+
+### Conditional operators
+```
+print "Greater than"
+print 5 > 1
+print 5 > 6
+
+print "Less than"
+print 5 < 1
+print 5 < 6
+
+print "Equal to"
+print 5 == 1
+print 5 == 6
+
+print "Not equal to"
+print 5 != 1
+print 5 != 6
+
+print "Greater than or equal to"
+print 5 >= 1
+print 5 >= 6
+
+print "Less than or equal to"
+print 5 <= 1
+print 5 <= 6
 ```
