@@ -61,6 +61,20 @@ main = hspec $ do
       it "should parse greater than or equal operator (>=) for integers" $ do
         parseProgram "x = 43 >= 42" `shouldBe` Right [Assign "x" (Ge (IntLit 43) (IntLit 42))]
 
+    describe "List operations" $ do
+      it "should parse list literal" $ do
+        parseProgram "x = [1, 2, 3]" `shouldBe` Right [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3])]
+      it "should parse list access" $ do
+        parseProgram "x = [1, 2, 3][0]" `shouldBe` Right [Assign "x" (ListAccess (ListLit [IntLit 1, IntLit 2, IntLit 3]) (IntLit 0))]
+      it "should parse list append" $ do
+        parseProgram "x = [1, 2, 3] << 4" `shouldBe` Right [Assign "x" (ListAppend (ListLit [IntLit 1, IntLit 2, IntLit 3]) (IntLit 4))]
+      it "should parse list remove" $ do
+        parseProgram "x = [1, 2, 3] >> 2" `shouldBe` Right [Assign "x" (ListRemove (ListLit [IntLit 1, IntLit 2, IntLit 3]) (IntLit 2))]
+      it "should parse list pop" $ do
+        parseProgram "x = [1, 2, 3] =>> 0" `shouldBe` Right [Assign "x" (ListPop (ListLit [IntLit 1, IntLit 2, IntLit 3]) (IntLit 0))]
+      it "should parse list add" $ do
+        parseProgram "x = [1, 2, 3] << 0 <<= 4" `shouldBe` Right [Assign "x" (ListAdd (ListLit [IntLit 1, IntLit 2, IntLit 3]) (IntLit 0) (IntLit 4))]
+
     describe "For loop" $ do
       it "should parse a for loop" $ do
         parseProgram "for (x = 0; x < 2; x = x + 1) {}" `shouldBe` Right [ForLoop (Assign "x" (IntLit 0)) (Lt (Var "x") (IntLit 2)) (Assign "x" (Add (Var "x") (IntLit 1))) []]
@@ -334,6 +348,57 @@ main = hspec $ do
         let exprs = [Ge (StrLit "hello") (StrLit "world")]
         result <- runInterpreter Map.empty exprs
         result `shouldSatisfy` isLeft
+
+    describe "List operations" $ do
+      it "should evaluate list literal" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3])]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 1, IntVal 2, IntVal 3])])
+
+      it "should evaluate list access" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListAccess (Var "x") (IntLit 0))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 1, IntVal 2, IntVal 3]), ("y", IntVal 1)])
+      
+      it "should evaluate list append" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListAppend (Var "x") (IntLit 4))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 1, IntVal 2, IntVal 3]), ("y", ListVal [IntVal 1, IntVal 2, IntVal 3, IntVal 4])])
+      
+      it "should evaluate list remove" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListRemove (Var "x") (IntLit 1))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 1, IntVal 2, IntVal 3]), ("y", ListVal [IntVal 1, IntVal 3])])
+      
+      it "should evaluate list pop" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListPop (Var "x") (IntLit 1))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 1, IntVal 3]), ("y", IntVal 2)])
+      
+      it "should evaluate list add" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListAdd (Var "x") (IntLit 0) (IntLit 4))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 1, IntVal 2, IntVal 3]), ("y", ListVal [ IntVal 4, IntVal 1, IntVal 2, IntVal 3])])
+      
+      it "should throw error when trying to access an index that is out of bounds" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListAccess (Var "x") (IntLit 3))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Left "Index out of bounds"
+      
+      it "should throw error when trying to remove an index that is out of bounds" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListRemove (Var "x") (IntLit 3))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Left "Index out of bounds"
+      
+      it "should throw error when trying to pop an index that is out of bounds" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListPop (Var "x") (IntLit 3))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Left "Index out of bounds"
+      
+      it "should throw error when trying to add an index that is out of bounds" $ do
+          let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListAdd (Var "x") (IntLit 4) (IntLit 4))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Left "Index out of bounds"
 
     describe "For loop" $ do
       it "should evaluate a for loop" $ do

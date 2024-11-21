@@ -12,6 +12,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Printing values
 - Looping (for loop)
 - Conditional operators (<,>,>=,<=)
+- Lists and basic operations (pop, append, remove and add)
 
 ## Examples
 
@@ -80,4 +81,23 @@ print 5 >= 6
 print "Less than or equal to"
 print 5 <= 1
 print 5 <= 6
+```
+
+### Lists
+```
+x = [1, 2, 3]
+y = x[1]
+print y
+
+print x
+x = x << "hellows world"
+print x
+
+x = x >> 0
+z = x =>> 0
+print x
+print z
+
+x = x << 1 <<= 5
+print x
 ```
