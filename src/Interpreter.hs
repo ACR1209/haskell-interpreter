@@ -11,6 +11,7 @@ data Value =
     IntVal Int
     | StrVal String
     | BoolVal Bool
+    | ListVal [Value]
     | NullVal
     deriving (Show, Eq)
 
@@ -139,6 +140,69 @@ eval (ForLoop counterVariable cond incr body) = do
     
     evalForLoop cond incr body
 
+eval (ListLit elems) = do
+    vals <- mapM eval elems
+    return $ ListVal vals
+
+eval (ListAccess listExpr indexExpr) = do
+    listVal <- eval listExpr
+    indexVal <- eval indexExpr
+    case (listVal, indexVal) of
+        (ListVal lst, IntVal idx) ->
+            if idx >= 0 && idx < length lst
+            then return $ lst !! idx
+            else throwError "Index out of bounds"
+        _ -> throwError "Type mismatch in list access"
+
+eval (ListAppend listExpr elemExpr) = do
+    listVal <- eval listExpr
+    elemVal <- eval elemExpr
+    case listVal of
+        ListVal lst -> return $ ListVal (lst ++ [elemVal])
+        _ -> throwError "Type mismatch in list append"
+
+eval (ListRemove listExpr indexExpr) = do
+    listVal <- eval listExpr
+    indexVal <- eval indexExpr
+    case (listVal, indexVal) of
+        (ListVal lst, IntVal idx) ->
+            if idx >= 0 && idx < length lst
+            then return $ ListVal (take idx lst ++ drop (idx + 1) lst)
+            else throwError "Index out of bounds"
+        _ -> throwError "Type mismatch in list remove"
+
+eval (ListPop listExpr indexExpr) = do
+    listVal <- eval listExpr
+    indexVal <- eval indexExpr
+    case (listVal, indexVal) of
+        (ListVal lst, IntVal idx) ->
+            if idx >= 0 && idx < length lst
+            then do
+                let (left, right) = splitAt idx lst
+                let poppedValue = head right
+                modify (Map.insert (getListName listExpr) (ListVal (left ++ tail right)))
+                return poppedValue
+            else throwError "Index out of bounds"
+        _ -> throwError "Type mismatch in list pop"
+
+eval (ListAdd listExpr indexExpr elemExpr) = do
+    listVal <- eval listExpr
+    indexVal <- eval indexExpr
+    elemVal <- eval elemExpr
+    case (listVal, indexVal) of
+        (ListVal lst, IntVal idx) ->
+            if idx >= 0 && idx <= (length lst) 
+            then do
+                let (left, right) = splitAt idx lst
+                let newList = left ++ [elemVal] ++ right
+                return $ ListVal newList
+            else throwError "Index out of bounds"
+        _ -> throwError "Type mismatch in list add"
+
+getListName :: Expr -> String
+getListName (Var name) = name
+getListName _ = error "Expected a variable name for list"
+
 evalForLoop :: Expr -> Expr -> [Expr] -> Interpreter Value
 evalForLoop cond incr body = do
     condVal <- eval cond
@@ -159,9 +223,10 @@ evalBlock = foldM (\_ exprs -> eval exprs) NullVal
 
 valueToString :: Value -> String
 valueToString (IntVal n)   = show n
-valueToString (StrVal s)   = s
+valueToString (StrVal s)   = "\"" ++ s ++ "\""
 valueToString (BoolVal b)  = if b then "true" else "false"
 valueToString NullVal      = "null"
+valueToString (ListVal l)  = "[" ++ unwords (map valueToString l) ++ "]"
 
 runInterpreter :: Env -> [Expr] -> IO (Either String (Value, Env))
 runInterpreter initialEnv exprs = do

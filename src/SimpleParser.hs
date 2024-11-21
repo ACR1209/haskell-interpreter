@@ -24,6 +24,12 @@ data Expr
     | Le Expr Expr -- Less or Equal (<=)
     | Ge Expr Expr -- Greater or Equal (>=)
     | BoolLit Bool 
+    | ListLit [Expr]  
+    | ListAccess Expr Expr
+    | ListAppend Expr Expr
+    | ListRemove Expr Expr
+    | ListPop Expr Expr
+    | ListAdd Expr Expr Expr
     deriving (Show, Eq)
 
 token :: Parser a -> Parser a
@@ -44,8 +50,63 @@ stringLiteral = token $ char '"' *> many (noneOf "\"") <* char '"'
 boolLiteral :: Parser Bool
 boolLiteral = token $ (True <$ string "true") <|> (False <$ string "false")
 
+listLiteral :: Parser Expr
+listLiteral = do
+    _ <- symbol "["
+    elements <- expr `sepBy` symbol ","
+    _ <- symbol "]"
+    return $ ListLit elements
+
+listAccess :: Parser Expr
+listAccess = do
+    list <- try listLiteral <|> (Var  <$> (try identifier)) 
+    _ <- symbol "["
+    index <- expr
+    _ <- symbol "]"
+    return $ ListAccess list index
+
+-- TODO: Implement so it works with multiple appends and make the list mutable (?)
+listAppend :: Parser Expr
+listAppend = do
+    list <- try listLiteral <|> (Var  <$> (try identifier)) 
+    _ <- symbol "<<"
+    element <- expr
+    return $ ListAppend list element
+
+listRemove :: Parser Expr
+listRemove = do
+    list <- try listLiteral <|> (Var  <$> (try identifier)) 
+    _ <- symbol ">>"
+    index <- expr
+    return $ ListRemove list index
+
+listPop :: Parser Expr
+listPop = do
+    list <- try listLiteral <|> (Var  <$> (try identifier)) 
+    _ <- symbol "=>>"
+    index <- expr
+    return $ ListPop list index
+
+listAdd :: Parser Expr
+listAdd = do
+    list <- try listLiteral <|> (Var  <$> (try identifier)) 
+    _ <- symbol "<<"
+    index <- expr
+
+    _ <- symbol "<<="
+    element <- expr
+
+    return $ ListAdd list index element
+
 expr :: Parser Expr
-expr = try comparison `chainl1` addSubOp
+expr = try  listAdd
+    <|> try listAppend 
+    <|> try listRemove
+    <|> try listPop
+    <|> try listAccess 
+    <|> try listLiteral
+    <|> try comparison `chainl1` addSubOp
+    <|> term
 
 comparison :: Parser Expr
 comparison = try (Eq <$> term <* symbol "==" <*> term)
