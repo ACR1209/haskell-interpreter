@@ -13,6 +13,7 @@ data Value =
     | BoolVal Bool
     | ListVal [Value]
     | NullVal
+    | FuncVal [String] [Expr] Env
     deriving (Show, Eq)
 
 type Env = Map.Map String Value
@@ -203,6 +204,32 @@ eval (Comment _) = return NullVal
 
 eval (MultiLineComment _) = return NullVal
 
+eval (FuncDef name params body) = do
+    env <- get
+    modify (Map.insert name (FuncVal params body env))
+    return NullVal
+
+eval (FuncCall name args) = do
+    env <- get
+    case Map.lookup name env of
+        Just (FuncVal params body closure) -> do
+            argVals <- mapM eval args
+            let funcEnv = Map.union (Map.fromList (zip params argVals)) closure
+            result <- withEnv funcEnv $ evalBlock body
+            return result
+        _ -> throwError $ "Undefined function: " ++ name
+  where
+    withEnv newEnv action = do
+        oldEnv <- get
+        put newEnv
+        result <- action
+        put oldEnv
+        return result
+
+
+eval (Return exprs) = eval exprs
+
+
 getListName :: Expr -> String
 getListName (Var name) = name
 getListName _ = error "Expected a variable name for list"
@@ -231,6 +258,7 @@ valueToString (StrVal s)   = "\"" ++ s ++ "\""
 valueToString (BoolVal b)  = if b then "true" else "false"
 valueToString NullVal      = "null"
 valueToString (ListVal l)  = "[" ++ unwords (map valueToString l) ++ "]"
+valueToString (FuncVal _ _ _) = "<function>"
 
 runInterpreter :: Env -> [Expr] -> IO (Either String (Value, Env))
 runInterpreter initialEnv exprs = do

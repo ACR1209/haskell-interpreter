@@ -32,6 +32,9 @@ data Expr
     | ListAdd Expr Expr Expr
     | Comment String
     | MultiLineComment String
+    | FuncDef String [String] [Expr]  -- Function definition: name, parameters, body
+    | FuncCall String [Expr]      -- Function call: name, arguments
+    | Return Expr                 
     deriving (Show, Eq)
 
 token :: Parser a -> Parser a
@@ -81,6 +84,30 @@ multiLineComment = do
     let trimmedComment = reverse . dropWhile (== ' ') . reverse $ comment
     return $ MultiLineComment trimmedComment
 
+functionDef :: Parser Expr
+functionDef = do
+    _ <- symbol "def"
+    name <- identifier
+    params <- between (symbol "(") (symbol ")") (identifier `sepBy` symbol ",")
+    _ <- symbol "{"
+    body <- many functionStatement
+    _ <- symbol "}"
+    return $ FuncDef name params body
+
+functionCall :: Parser Expr
+functionCall = do
+    name <- identifier
+    _ <- symbol "("
+    args <- expr `sepBy` symbol ","
+    _ <- symbol ")"
+    return $ FuncCall name args
+
+returnStatement :: Parser Expr
+returnStatement = do
+    _ <- symbol "return"
+    val <- expr
+    return $ Return val
+
 -- TODO: Implement so it works with multiple appends and make the list mutable (?)
 listAppend :: Parser Expr
 listAppend = do
@@ -115,11 +142,12 @@ listAdd = do
     return $ ListAdd list index element
 
 expr :: Parser Expr
-expr = try  listAdd
-    <|> try listAppend 
+expr = try functionCall
+    <|> try listAdd 
+    <|> try listAppend
     <|> try listRemove
     <|> try listPop
-    <|> try listAccess 
+    <|> try listAccess
     <|> try listLiteral
     <|> try comparison `chainl1` addSubOp
     <|> term
@@ -153,13 +181,18 @@ mulDivOp =   (Mul <$ symbol "*")
          <|> (Div <$ symbol "/")
 
 statement :: Parser Expr
-statement =
-        try assignment
-    <|> forStatement
-    <|> ifStatement
-    <|> try multiLineComment
-    <|> try comments
-    <|> printStatement
+statement = try assignment
+        <|> try functionCall
+        <|> try forStatement
+        <|> try ifStatement
+        <|> try multiLineComment
+        <|> try comments
+        <|> try printStatement
+        <|> try functionDef
+
+functionStatement :: Parser Expr
+functionStatement = try returnStatement
+                <|> statement
 
 assignment :: Parser Expr
 assignment = do
