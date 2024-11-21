@@ -14,6 +14,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Conditional operators (<,>,>=,<=)
 - Lists and basic operations (pop, append, remove and add)
 - Comments
+- Function definitions
 
 ## Examples
 
@@ -112,4 +113,21 @@ print x
     multiline
     comment :)
 */
+```
+### Functions
+```
+def add(x, y) {
+    return x + y
+}
+
+def sayHello(){
+    print "Hello World"
+}
+
+x = 5
+y = 10
+z = add(x, y)
+
+sayHello()
+print z
 ```

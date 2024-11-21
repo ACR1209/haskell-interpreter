@@ -91,6 +91,22 @@ main = hspec $ do
       it "should correctly parse inline comments on the side of a statement" $ do
         parseProgram "x = 42 # This is a comment" `shouldBe` Right [Assign "x" (IntLit 42), Comment "This is a comment"]
 
+    describe "Function definition" $ do
+      it "should parse a function definition" $ do
+        parseProgram "def add(x, y) { return x + y }" `shouldBe` Right [FuncDef "add" ["x", "y"] [Return (Add (Var "x") (Var "y"))]]
+
+      it "should fail if the function definition is missing the return keyword" $ do
+        parseProgram "def add(x, y) { x + y }" `shouldSatisfy` isLeft
+      
+      it "should fail if the return keyword is used outside a function" $ do
+        parseProgram "return 42" `shouldSatisfy` isLeft
+
+    describe "Function call" $ do
+      it "should parse a function call as a statement" $ do
+        parseProgram "add(1, 2)" `shouldBe` Right [FuncCall "add" [IntLit 1, IntLit 2]]
+      it "should parse a function call as an expression" $ do
+        parseProgram "x = add(1, 2)" `shouldBe` Right [Assign "x" (FuncCall "add" [IntLit 1, IntLit 2])]
+
     describe "For loop" $ do
       it "should parse a for loop" $ do
         parseProgram "for (x = 0; x < 2; x = x + 1) {}" `shouldBe` Right [ForLoop (Assign "x" (IntLit 0)) (Lt (Var "x") (IntLit 2)) (Assign "x" (Add (Var "x") (IntLit 1))) []]
@@ -426,6 +442,24 @@ main = hspec $ do
           let exprs = [MultiLineComment "This is a comment", Assign "x" (IntLit 42)]
           result <- runInterpreter Map.empty exprs
           result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42)])
+
+    describe "Function Definitions" $ do
+      it "should evaluate a function definition" $ do
+          let exprs = [FuncDef "add" ["x", "y"] [Return (Add (Var "x") (Var "y"))]]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("add", FuncVal ["x", "y"] [Return (Add (Var "x") (Var "y"))] Map.empty)])
+
+    describe "Function Calls" $ do
+      it "should evaluate a function call" $ do
+          let exprs = [FuncDef "add" ["x", "y"] [Return (Add (Var "x") (Var "y"))], FuncCall "add" [IntLit 1, IntLit 2]]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("add", FuncVal ["x", "y"] [Return (Add (Var "x") (Var "y"))] Map.empty)])
+
+      it "should allow to assign the result of a function call" $ do
+          let exprs = [FuncDef "add" ["x", "y"] [Return (Add (Var "x") (Var "y"))], Assign "z" (FuncCall "add" [IntLit 1, IntLit 2])]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("add", FuncVal ["x", "y"] [Return (Add (Var "x") (Var "y"))] Map.empty), ("z", IntVal 3)])
+
 
     describe "For loop" $ do
       it "should evaluate a for loop" $ do
