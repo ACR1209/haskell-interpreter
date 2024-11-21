@@ -199,6 +199,10 @@ eval (ListAdd listExpr indexExpr elemExpr) = do
             else throwError "Index out of bounds"
         _ -> throwError "Type mismatch in list add"
 
+eval (Comment _) = return NullVal
+
+eval (MultiLineComment _) = return NullVal
+
 getListName :: Expr -> String
 getListName (Var name) = name
 getListName _ = error "Expected a variable name for list"

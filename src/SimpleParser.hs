@@ -30,6 +30,8 @@ data Expr
     | ListRemove Expr Expr
     | ListPop Expr Expr
     | ListAdd Expr Expr Expr
+    | Comment String
+    | MultiLineComment String
     deriving (Show, Eq)
 
 token :: Parser a -> Parser a
@@ -64,6 +66,20 @@ listAccess = do
     index <- expr
     _ <- symbol "]"
     return $ ListAccess list index
+
+comments :: Parser Expr
+comments = do
+    _ <- symbol "#"
+    comment <- many (noneOf "\n")
+    optional (symbol "\n")
+    return $ Comment comment
+
+multiLineComment :: Parser Expr
+multiLineComment = do
+    _ <- symbol "/*"
+    comment <- manyTill anyChar (try $ symbol "*/")
+    let trimmedComment = reverse . dropWhile (== ' ') . reverse $ comment
+    return $ MultiLineComment trimmedComment
 
 -- TODO: Implement so it works with multiple appends and make the list mutable (?)
 listAppend :: Parser Expr
@@ -141,6 +157,8 @@ statement =
         try assignment
     <|> forStatement
     <|> ifStatement
+    <|> try multiLineComment
+    <|> try comments
     <|> printStatement
 
 assignment :: Parser Expr

@@ -13,6 +13,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Looping (for loop)
 - Conditional operators (<,>,>=,<=)
 - Lists and basic operations (pop, append, remove and add)
+- Comments
 
 ## Examples
 
@@ -87,17 +88,28 @@ print 5 <= 6
 ```
 x = [1, 2, 3]
 y = x[1]
-print y
+print y 
 
-print x
-x = x << "hellows world"
-print x
+print x 
+x = x << "hellows world" # appends value to the end of list
+print x 
 
-x = x >> 0
-z = x =>> 0
-print x
+x = x >> 0 # Deletes the item at position 0 from the list
+z = x =>> 0 # Pops the item at position 0, returning the element
+print x 
 print z
 
-x = x << 1 <<= 5
+x = x << 1 <<= 5 # Add 5 to the list, placing it a the index 1 position 
 print x
+```
+
+### Comments
+```
+# This is a comment
+
+/*
+    This is a
+    multiline
+    comment :)
+*/
 ```

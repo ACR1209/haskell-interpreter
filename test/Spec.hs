@@ -75,6 +75,22 @@ main = hspec $ do
       it "should parse list add" $ do
         parseProgram "x = [1, 2, 3] << 0 <<= 4" `shouldBe` Right [Assign "x" (ListAdd (ListLit [IntLit 1, IntLit 2, IntLit 3]) (IntLit 0) (IntLit 4))]
 
+    describe "Comments" $ do
+      it "should parse single line comment" $ do
+        parseProgram "# This is a comment" `shouldBe` Right [Comment "This is a comment"]
+      it "should parse multi line comment" $ do
+        parseProgram "/* This is a comment */" `shouldBe` Right [MultiLineComment "This is a comment"]
+      it "should parse multi line comment with new lines" $ do
+        parseProgram "/* This is a \n comment */" `shouldBe` Right [MultiLineComment "This is a \n comment"]
+      it "should parse a comment with a # in it" $ do
+        parseProgram "# This is a comment with a # in it" `shouldBe` Right [Comment "This is a comment with a # in it"]
+      it "should parse a comment with a /* in it" $ do
+        parseProgram "# This is a comment with a /* in it" `shouldBe` Right [Comment "This is a comment with a /* in it"]
+      it "should parse a comment with a */ in it" $ do
+        parseProgram "# This is a comment with a */ in it" `shouldBe` Right [Comment "This is a comment with a */ in it"]        
+      it "should correctly parse inline comments on the side of a statement" $ do
+        parseProgram "x = 42 # This is a comment" `shouldBe` Right [Assign "x" (IntLit 42), Comment "This is a comment"]
+
     describe "For loop" $ do
       it "should parse a for loop" $ do
         parseProgram "for (x = 0; x < 2; x = x + 1) {}" `shouldBe` Right [ForLoop (Assign "x" (IntLit 0)) (Lt (Var "x") (IntLit 2)) (Assign "x" (Add (Var "x") (IntLit 1))) []]
@@ -399,6 +415,17 @@ main = hspec $ do
           let exprs = [Assign "x" (ListLit [IntLit 1, IntLit 2, IntLit 3]), Assign "y" (ListAdd (Var "x") (IntLit 4) (IntLit 4))]
           result <- runInterpreter Map.empty exprs
           result `shouldBe` Left "Index out of bounds"
+
+    describe "Comments" $ do
+      it "should ignore single line comments" $ do
+          let exprs = [Comment "This is a comment", Assign "x" (IntLit 42)]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42)])
+      
+      it "should ignore multi line comments" $ do
+          let exprs = [MultiLineComment "This is a comment", Assign "x" (IntLit 42)]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42)])
 
     describe "For loop" $ do
       it "should evaluate a for loop" $ do
