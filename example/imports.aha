@@ -1,0 +1,4 @@
+import ./example/funcs
+
+print "calling a function of the funcs.aha file, inside imports.aha 👀"
+print add(1,2)

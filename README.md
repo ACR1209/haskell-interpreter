@@ -16,6 +16,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Comments
 - Function definitions
 - Basic logical operation
+- Basic module handling
 
 ## Examples
 
@@ -144,4 +145,12 @@ print false or true
 
 print not false
 print not true
+```
+
+### Modules
+```
+import ./example/funcs
+
+print "calling a function of the funcs.aha file, inside imports.aha 👀"
+print add(1,2)
 ```

@@ -5,7 +5,7 @@ import qualified Data.Map as Map
 import Control.Monad.Except
 import Control.Monad (foldM)
 import Control.Monad.State
-
+import System.Directory (doesFileExist)
 
 data Value =
     IntVal Int
@@ -254,7 +254,27 @@ eval (LogicNot v) = do
         BoolVal b -> return $ BoolVal (not b)
         _ -> throwError "Type mismatch in not"
 
+eval (ImportModule name) = do
+    liftIO $ putStrLn $ "Importing module: " ++ name
 
+    env <- get
+
+    exists <- liftIO $ doesFileExist (name ++ ".aha")
+
+    if not exists
+        then do
+            _ <- throwError $ "Module " ++ name ++ " does not exist"
+            return NullVal
+        else do
+            moduleCode <- liftIO $ parseProgram <$> readFile (name ++ ".aha")
+            case moduleCode of
+                Left err -> liftIO $ putStrLn $ "Error while importing module " ++ name ++ ": " ++ show err
+                Right ast -> do
+                    _ <- evalBlock ast
+
+                    newEnv <- get
+                    put (Map.union newEnv env)
+            return NullVal
 
 getListName :: Expr -> String
 getListName (Var name) = name
