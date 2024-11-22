@@ -340,7 +340,7 @@ valueToString (IntVal n)   = show n
 valueToString (StrVal s)   = "\"" ++ s ++ "\""
 valueToString (BoolVal b)  = if b then "true" else "false"
 valueToString NullVal      = "null"
-valueToString (ListVal l)  = "[" ++ (intercalate "," (map valueToString l)) ++ "]"
+valueToString (ListVal l)  = "[" ++ (intercalate ", " (map valueToString l)) ++ "]"
 valueToString (FuncVal _ _ _) = "<function>"
 
 {- |
