@@ -228,7 +228,7 @@ eval (FuncCall name args) = do
 
 eval (Return exprs) = eval exprs
 
-eval (And v1 v2) = do
+eval (LogicAnd v1 v2) = do
     val1 <- eval v1
     val2 <- eval v2
     case (val1, val2) of
@@ -237,7 +237,7 @@ eval (And v1 v2) = do
         (BoolVal b1, BoolVal b2) -> return $ BoolVal (b1 && b2)
         _ -> throwError "Type mismatch in and"
 
-eval (Or v1 v2) = do
+eval (LogicOr v1 v2) = do
     val1 <- eval v1
     val2 <- eval v2
     case (val1, val2) of
@@ -246,7 +246,7 @@ eval (Or v1 v2) = do
         (BoolVal b1, BoolVal b2) -> return $ BoolVal (b1 || b2)
         _ -> throwError "Type mismatch in or"
 
-eval (Not v) = do
+eval (LogicNot v) = do
     val <- eval v
     case val of
         StrVal s -> return $ BoolVal (s == "")

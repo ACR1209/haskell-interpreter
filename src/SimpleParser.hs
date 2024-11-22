@@ -23,9 +23,9 @@ data Expr
     | Gt Expr Expr -- Greater than (>)
     | Le Expr Expr -- Less or Equal (<=)
     | Ge Expr Expr -- Greater or Equal (>=)
-    | And Expr Expr
-    | Or Expr Expr
-    | Not Expr
+    | LogicAnd Expr Expr
+    | LogicOr Expr Expr
+    | LogicNot Expr
     | BoolLit Bool 
     | ListLit [Expr]  
     | ListAccess Expr Expr
@@ -111,7 +111,7 @@ returnStatement = do
     val <- expr
     return $ Return val
 
--- TODO: Implement so it works with multiple appends and make the list mutable (?)
+-- TODO: Implement so it works with multiple appends LogicAnd make the list mutable (?)
 listAppend :: Parser Expr
 listAppend = do
     list <- try listLiteral <|> (Var  <$> (try identifier)) 
@@ -146,13 +146,13 @@ listAdd = do
 
 expr :: Parser Expr
 expr = try functionCall
-    <|> try listAdd 
+    <|> try listAdd
     <|> try listAppend
     <|> try listRemove
     <|> try listPop
     <|> try listAccess
-    <|> try listLiteral
     <|> try logicalOps
+    <|> try listLiteral
     <|> try comparison `chainl1` addSubOp
     <|> term
 
@@ -166,30 +166,9 @@ comparison = try (Eq <$> term <* symbol "==" <*> term)
         <|> term  
 
 logicalOps :: Parser Expr
-logicalOps = try logicalAnd
-        <|> try logicalOr
-        <|> try logicalNot
-        <|> comparison
-
-logicalAnd :: Parser Expr
-logicalAnd = do
-    left <- expr
-    _ <- symbol "and"
-    right <- expr
-    return $ And left right
-
-logicalOr :: Parser Expr
-logicalOr = do
-    left <- expr
-    _ <- symbol "or"
-    right <- expr
-    return $ Or left right
-
-logicalNot :: Parser Expr
-logicalNot = do
-    _ <- symbol "not"
-    val <- expr
-    return $ Not val
+logicalOps = try (LogicAnd <$> term <* symbol "and" <*> term )
+        <|> try (LogicOr <$> term <* symbol "or" <*> term)
+        <|> try (LogicNot <$> (symbol "not" *> term))
 
 term :: Parser Expr
 term = factor `chainl1` mulDivOp
@@ -215,6 +194,7 @@ statement = try assignment
         <|> try functionCall
         <|> try forStatement
         <|> try ifStatement
+        <|> try listLiteral
         <|> try multiLineComment
         <|> try comments
         <|> try printStatement
