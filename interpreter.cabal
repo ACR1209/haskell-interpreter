@@ -15,6 +15,7 @@ library
   exposed-modules: Interpreter, SimpleParser
   build-depends:
     , parsec
+    , directory
     , containers
     , mtl 
     , text

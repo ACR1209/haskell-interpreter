@@ -35,6 +35,7 @@ data Expr
     | ListAdd Expr Expr Expr
     | Comment String
     | MultiLineComment String
+    | ImportModule String
     | FuncDef String [String] [Expr]  -- Function definition: name, parameters, body
     | FuncCall String [Expr]      -- Function call: name, arguments
     | Return Expr                 
@@ -156,6 +157,15 @@ expr = try functionCall
     <|> try comparison `chainl1` addSubOp
     <|> term
 
+-- For now it will support import of whole files and at the start of a file and as relative path from the root directory of the compiler
+-- TODO: Make it so it's relative to current file
+importModule :: Parser Expr
+importModule = do
+    _ <- symbol "import"
+    relativeModulePathString <- many (noneOf "\n")
+    optional (symbol "\n")
+    return $ ImportModule relativeModulePathString
+
 comparison :: Parser Expr
 comparison = try (Eq <$> term <* symbol "==" <*> term)
         <|> try (Neq <$> term <* symbol "!=" <*> term)
@@ -191,6 +201,7 @@ mulDivOp =   (Mul <$ symbol "*")
 
 statement :: Parser Expr
 statement = try assignment
+        <|> try importModule
         <|> try functionCall
         <|> try forStatement
         <|> try ifStatement

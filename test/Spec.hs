@@ -119,6 +119,10 @@ main = hspec $ do
       it "should parse a for loop" $ do
         parseProgram "for (x = 0; x < 2; x = x + 1) {}" `shouldBe` Right [ForLoop (Assign "x" (IntLit 0)) (Lt (Var "x") (IntLit 2)) (Assign "x" (Add (Var "x") (IntLit 1))) []]
 
+    describe "Import module" $ do
+      it "should parse an import module statement" $ do
+        parseProgram "import module" `shouldBe` Right [ImportModule "module"]
+
   describe "Interpreter" $ do
     describe "Basic operations" $ do
       it "should evaluate integer assignment" $ do
@@ -540,6 +544,15 @@ main = hspec $ do
           result <- runInterpreter Map.empty exprs
           result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal False), ("y", BoolVal True)])
 
+    describe "Import module" $ do
+      it "should import a module if it exists" $ do
+          let exprs = [ImportModule "./test/testModule"]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList([("x", BoolVal True)]))
+      it "should throw an error if the module does not exist" $ do
+          let exprs = [ImportModule "./test/nonExistentModule"]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Left "Module ./test/nonExistentModule does not exist"
 
     describe "For loop" $ do
       it "should evaluate a for loop" $ do
