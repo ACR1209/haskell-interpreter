@@ -23,6 +23,9 @@ data Expr
     | Gt Expr Expr -- Greater than (>)
     | Le Expr Expr -- Less or Equal (<=)
     | Ge Expr Expr -- Greater or Equal (>=)
+    | And Expr Expr
+    | Or Expr Expr
+    | Not Expr
     | BoolLit Bool 
     | ListLit [Expr]  
     | ListAccess Expr Expr
@@ -149,6 +152,7 @@ expr = try functionCall
     <|> try listPop
     <|> try listAccess
     <|> try listLiteral
+    <|> try logicalOps
     <|> try comparison `chainl1` addSubOp
     <|> term
 
@@ -160,6 +164,32 @@ comparison = try (Eq <$> term <* symbol "==" <*> term)
         <|> try (Le <$> term <* symbol "<=" <*> term)
         <|> try (Ge <$> term <* symbol ">=" <*> term)
         <|> term  
+
+logicalOps :: Parser Expr
+logicalOps = try logicalAnd
+        <|> try logicalOr
+        <|> try logicalNot
+        <|> comparison
+
+logicalAnd :: Parser Expr
+logicalAnd = do
+    left <- expr
+    _ <- symbol "and"
+    right <- expr
+    return $ And left right
+
+logicalOr :: Parser Expr
+logicalOr = do
+    left <- expr
+    _ <- symbol "or"
+    right <- expr
+    return $ Or left right
+
+logicalNot :: Parser Expr
+logicalNot = do
+    _ <- symbol "not"
+    val <- expr
+    return $ Not val
 
 term :: Parser Expr
 term = factor `chainl1` mulDivOp
@@ -192,7 +222,7 @@ statement = try assignment
 
 functionStatement :: Parser Expr
 functionStatement = try returnStatement
-                <|> statement
+                <|> try statement
 
 assignment :: Parser Expr
 assignment = do
