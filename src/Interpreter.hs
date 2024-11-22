@@ -3,6 +3,7 @@ module Interpreter where
 import SimpleParser
 import qualified Data.Map as Map
 import Control.Monad.Except
+import Data.List (intercalate)
 import Control.Monad (foldM)
 import Control.Monad.State
 import System.Directory (doesFileExist)
@@ -339,7 +340,7 @@ valueToString (IntVal n)   = show n
 valueToString (StrVal s)   = "\"" ++ s ++ "\""
 valueToString (BoolVal b)  = if b then "true" else "false"
 valueToString NullVal      = "null"
-valueToString (ListVal l)  = "[" ++ unwords (map valueToString l) ++ "]"
+valueToString (ListVal l)  = "[" ++ (intercalate "," (map valueToString l)) ++ "]"
 valueToString (FuncVal _ _ _) = "<function>"
 
 {- |

@@ -85,30 +85,90 @@ spec = context "Interpreter" $ do
           result `shouldBe` Left "Type mismatch in division"
 
     describe "If statement" $ do
-      it "should evaluate if statement with true condition" $ do
-          let exprs = [Assign "x" (IntLit 1), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
-          result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 1), ("y", IntVal 42)])
+        it "should evaluate if statement with true condition" $ do
+            let exprs = [Assign "x" (IntLit 1), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 1), ("y", IntVal 42)])
 
-      it "should evaluate with bools" $ do
-          let exprs = [Assign "x" (BoolLit True), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
-          result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True), ("y", IntVal 42)])
+        it "should evaluate with bools" $ do
+            let exprs = [Assign "x" (BoolLit True), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True), ("y", IntVal 42)])
 
-      it "should consider an empty string falsy" $ do
-          let exprs = [Assign "x" (StrLit ""), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
-          result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal ""), ("y", IntVal 0)])
-      
-      it "should consider a non-empty string truthy" $ do
-          let exprs = [Assign "x" (StrLit "hello"), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
-          result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "hello"), ("y", IntVal 42)])
-      
-      it "should evaluate if statement with false condition" $ do
-          let exprs = [Assign "x" (IntLit 0), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
-          result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 0), ("y", IntVal 0)])
+        it "should consider an empty string falsy" $ do
+            let exprs = [Assign "x" (StrLit ""), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal ""), ("y", IntVal 0)])
+        
+        it "should consider a non-empty string truthy" $ do
+            let exprs = [Assign "x" (StrLit "hello"), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", StrVal "hello"), ("y", IntVal 42)])
+        
+        it "should evaluate if statement with false condition" $ do
+            let exprs = [Assign "x" (IntLit 0), If (Var "x") [Assign "y" (IntLit 42)] [Assign "y" (IntLit 0)]]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 0), ("y", IntVal 0)])
+
+        it "should evaluate if statement with multiple statements" $ do 
+            let exprs = [Assign "x" (IntLit 1), If (Var "x") [Assign "y" (IntLit 42), Assign "z" (IntLit 43)] [Assign "y" (IntLit 0), Assign "z" (IntLit 0)]]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 1), ("y", IntVal 42), ("z", IntVal 43)])
+
+    describe "Value to string" $ do
+        it "should correctly format an integer" $ do
+            let exprs = IntVal 42
+            let result = valueToString exprs
+
+            result `shouldBe` "42"
+
+        it "should correctly format a string" $ do
+            let exprs = StrVal "hello"
+            let result = valueToString exprs
+
+            result `shouldBe` "\"hello\""
+
+        it "should correctly format boolean true" $ do
+            let exprs = BoolVal True
+            let result = valueToString exprs
+
+            result `shouldBe` "true"
+        
+        it "should correctly format boolean false" $ do
+            let exprs = BoolVal False
+            let result = valueToString exprs
+
+            result `shouldBe` "false"
+        
+        it "should correctly format a list" $ do
+            let exprs = ListVal [IntVal 1, IntVal 2, IntVal 3]
+            let result = valueToString exprs
+
+            result `shouldBe` "[1, 2, 3]"
+        
+        it "should correctly format a list with strings" $ do
+            let exprs = ListVal [StrVal "hello", StrVal "world"]
+            let result = valueToString exprs
+
+            result `shouldBe` "[\"hello\", \"world\"]"
+        
+        it "should correctly format a list with mixed types" $ do
+            let exprs = ListVal [IntVal 1, StrVal "hello", BoolVal True]
+            let result = valueToString exprs
+
+            result `shouldBe` "[1, \"hello\", true]"
+        
+        it "should be able to show a function" $ do
+            let exprs = FuncVal ["x", "y"] [Add (Var "x") (Var "y")] Map.empty
+            let result = valueToString exprs
+
+            result `shouldBe` "<function>"
+
+        it "should be able to show null" $ do
+            let exprs = NullVal
+            let result = valueToString exprs
+
+            result `shouldBe` "null"
 
     describe "Print statement" $ do
       it "should evaluate print statement" $ do
