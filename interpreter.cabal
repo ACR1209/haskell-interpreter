@@ -31,7 +31,10 @@ executable interpreter
 test-suite interpreter-tests
     type:                exitcode-stdio-1.0
     hs-source-dirs:      test
-    main-is:             Spec.hs
+    main-is:             Main.hs
+    other-modules:       
+      InterpreterSpec
+      ParserSpec
     build-depends: 
         base
         , hspec
