@@ -107,6 +107,14 @@ main = hspec $ do
       it "should parse a function call as an expression" $ do
         parseProgram "x = add(1, 2)" `shouldBe` Right [Assign "x" (FuncCall "add" [IntLit 1, IntLit 2])]
 
+    describe "Logical operations" $ do
+      it "should be able to parse the logical and operator (and)" $ do
+        parseProgram "x = true and false" `shouldBe` Right [Assign "x" (LogicAnd (BoolLit True) (BoolLit False))]
+      it "should be able to parse the logical or operator (or)" $ do
+        parseProgram "x = true or false" `shouldBe` Right [Assign "x" (LogicOr (BoolLit True) (BoolLit False))]
+      it "should be able to parse the logical not operator (not)" $ do
+        parseProgram "x = not true" `shouldBe` Right [Assign "x" (LogicNot (BoolLit True))]
+
     describe "For loop" $ do
       it "should parse a for loop" $ do
         parseProgram "for (x = 0; x < 2; x = x + 1) {}" `shouldBe` Right [ForLoop (Assign "x" (IntLit 0)) (Lt (Var "x") (IntLit 2)) (Assign "x" (Add (Var "x") (IntLit 1))) []]
@@ -459,6 +467,78 @@ main = hspec $ do
           let exprs = [FuncDef "add" ["x", "y"] [Return (Add (Var "x") (Var "y"))], Assign "z" (FuncCall "add" [IntLit 1, IntLit 2])]
           result <- runInterpreter Map.empty exprs
           result `shouldBe` Right (IntVal 0, Map.fromList [("add", FuncVal ["x", "y"] [Return (Add (Var "x") (Var "y"))] Map.empty), ("z", IntVal 3)])
+
+    describe "Logical operations" $ do
+      it "should evaluate logical and operator (and)" $ do
+          let exprs = [Assign "x" (LogicAnd (BoolLit True) (BoolLit False))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal False)])
+      
+      it "should evaluate logical and operator (and) with strings" $ do
+          let exprs = [Assign "x" (LogicAnd (StrLit "hello") (StrLit "world"))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True)])
+          
+      it "should evaluate logical and operator (and) with ints" $ do
+          let exprs = [Assign "x" (LogicAnd (IntLit 1) (IntLit 2))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True)])
+
+      it "should evaluate logical or operator (or)" $ do
+          let exprs = [Assign "x" (LogicOr (BoolLit True) (BoolLit False))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True)])
+
+      it "should evaluate logical or operator (or) with strings" $ do
+          let exprs = [Assign "x" (LogicOr (StrLit "hello") (StrLit "world"))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True)])        
+      
+      it "should evaluate logical or operator (or) with integers" $ do
+          let exprs = [Assign "x" (LogicOr (IntLit 0) (IntLit 5))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True)])        
+
+      it "should evaluate logical not operator (not)" $ do
+          let exprs = [Assign "x" (LogicNot (BoolLit True))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal False)])
+      
+      it "should evaluate logical not operator (not) with strings" $ do
+          let exprs = [Assign "x" (LogicNot (StrLit "hello"))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal False)])
+
+      it "should evaluate logical not operator (not) with integers" $ do
+          let exprs = [Assign "x" (LogicNot (IntLit 5))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal False)])
+
+
+      it "should throw error when using the logical and operator (and) on two different types" $ do
+          let exprs = [LogicAnd (BoolLit True) (IntLit 42)]
+          result <- runInterpreter Map.empty exprs
+          result `shouldSatisfy` isLeft
+      
+      it "should throw error when using the logical or operator (or) on two different types" $ do
+          let exprs = [LogicOr (BoolLit True) (IntLit 42)]
+          result <- runInterpreter Map.empty exprs
+          result `shouldSatisfy` isLeft
+
+      it "should give the correct truth table for the logical and operator (and)" $ do
+          let exprs = [Assign "x" (LogicAnd (BoolLit True) (BoolLit True)), Assign "y" (LogicAnd (BoolLit True) (BoolLit False)), Assign "z" (LogicAnd (BoolLit False) (BoolLit True)), Assign "w" (LogicAnd (BoolLit False) (BoolLit False))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True), ("y", BoolVal False), ("z", BoolVal False), ("w", BoolVal False)])
+
+      it "should give the correct truth table for the logical or operator (or)" $ do
+          let exprs = [Assign "x" (LogicOr (BoolLit True) (BoolLit True)), Assign "y" (LogicOr (BoolLit True) (BoolLit False)), Assign "z" (LogicOr (BoolLit False) (BoolLit True)), Assign "w" (LogicOr (BoolLit False) (BoolLit False))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal True), ("y", BoolVal True), ("z", BoolVal True), ("w", BoolVal False)])
+      
+      it "should give the correct truth table for the logical not operator (not)" $ do
+          let exprs = [Assign "x" (LogicNot (BoolLit True)), Assign "y" (LogicNot (BoolLit False))]
+          result <- runInterpreter Map.empty exprs
+          result `shouldBe` Right (IntVal 0, Map.fromList [("x", BoolVal False), ("y", BoolVal True)])
 
 
     describe "For loop" $ do

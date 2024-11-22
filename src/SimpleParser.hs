@@ -23,6 +23,9 @@ data Expr
     | Gt Expr Expr -- Greater than (>)
     | Le Expr Expr -- Less or Equal (<=)
     | Ge Expr Expr -- Greater or Equal (>=)
+    | LogicAnd Expr Expr
+    | LogicOr Expr Expr
+    | LogicNot Expr
     | BoolLit Bool 
     | ListLit [Expr]  
     | ListAccess Expr Expr
@@ -108,7 +111,7 @@ returnStatement = do
     val <- expr
     return $ Return val
 
--- TODO: Implement so it works with multiple appends and make the list mutable (?)
+-- TODO: Implement so it works with multiple appends LogicAnd make the list mutable (?)
 listAppend :: Parser Expr
 listAppend = do
     list <- try listLiteral <|> (Var  <$> (try identifier)) 
@@ -143,11 +146,12 @@ listAdd = do
 
 expr :: Parser Expr
 expr = try functionCall
-    <|> try listAdd 
+    <|> try listAdd
     <|> try listAppend
     <|> try listRemove
     <|> try listPop
     <|> try listAccess
+    <|> try logicalOps
     <|> try listLiteral
     <|> try comparison `chainl1` addSubOp
     <|> term
@@ -160,6 +164,11 @@ comparison = try (Eq <$> term <* symbol "==" <*> term)
         <|> try (Le <$> term <* symbol "<=" <*> term)
         <|> try (Ge <$> term <* symbol ">=" <*> term)
         <|> term  
+
+logicalOps :: Parser Expr
+logicalOps = try (LogicAnd <$> term <* symbol "and" <*> term )
+        <|> try (LogicOr <$> term <* symbol "or" <*> term)
+        <|> try (LogicNot <$> (symbol "not" *> term))
 
 term :: Parser Expr
 term = factor `chainl1` mulDivOp
@@ -185,6 +194,7 @@ statement = try assignment
         <|> try functionCall
         <|> try forStatement
         <|> try ifStatement
+        <|> try listLiteral
         <|> try multiLineComment
         <|> try comments
         <|> try printStatement
@@ -192,7 +202,7 @@ statement = try assignment
 
 functionStatement :: Parser Expr
 functionStatement = try returnStatement
-                <|> statement
+                <|> try statement
 
 assignment :: Parser Expr
 assignment = do

@@ -15,6 +15,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Lists and basic operations (pop, append, remove and add)
 - Comments
 - Function definitions
+- Basic logical operation
 
 ## Examples
 
@@ -130,4 +131,17 @@ z = add(x, y)
 
 sayHello()
 print z
+```
+
+### Logical operations
+```
+print true and false
+print true and true
+
+print true or true
+print false or false
+print false or true
+
+print not false
+print not true
 ```

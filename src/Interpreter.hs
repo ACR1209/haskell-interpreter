@@ -226,8 +226,34 @@ eval (FuncCall name args) = do
         put oldEnv
         return result
 
-
 eval (Return exprs) = eval exprs
+
+eval (LogicAnd v1 v2) = do
+    val1 <- eval v1
+    val2 <- eval v2
+    case (val1, val2) of
+        (StrVal s1, StrVal s2) -> return $ BoolVal (s1 /= "" && s2 /= "")
+        (IntVal n1, IntVal n2) -> return $ BoolVal (n1 /= 0 && n2 /= 0)
+        (BoolVal b1, BoolVal b2) -> return $ BoolVal (b1 && b2)
+        _ -> throwError "Type mismatch in and"
+
+eval (LogicOr v1 v2) = do
+    val1 <- eval v1
+    val2 <- eval v2
+    case (val1, val2) of
+        (StrVal s1, StrVal s2) -> return $ BoolVal (s1 /= "" || s2 /= "")
+        (IntVal n1, IntVal n2) -> return $ BoolVal (n1 /= 0 || n2 /= 0)
+        (BoolVal b1, BoolVal b2) -> return $ BoolVal (b1 || b2)
+        _ -> throwError "Type mismatch in or"
+
+eval (LogicNot v) = do
+    val <- eval v
+    case val of
+        StrVal s -> return $ BoolVal (s == "")
+        IntVal n -> return $ BoolVal (n == 0)
+        BoolVal b -> return $ BoolVal (not b)
+        _ -> throwError "Type mismatch in not"
+
 
 
 getListName :: Expr -> String
