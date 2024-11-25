@@ -118,6 +118,13 @@ spec = context "SimpleParser" $ do
       it "should parse a for loop" $ do
         parseProgram "for (x = 0; x < 2; x = x + 1) {}" `shouldBe` Right [ForLoop (Assign "x" (IntLit 0)) (Lt (Var "x") (IntLit 2)) (Assign "x" (Add (Var "x") (IntLit 1))) []]
 
+    describe "While loop" $ do
+      it "should parse a while loop" $ do
+        parseProgram "loop (x < 2) {  }" `shouldBe` Right [WhileLoop (Lt (Var "x") (IntLit 2)) []]
+
+      it "should parse a do while loop" $ do
+        parseProgram "do {} loop (x < 2)" `shouldBe` Right [DoWhileLoop (Lt (Var "x") (IntLit 2)) []]
+
     describe "Import module" $ do
       it "should parse an import module statement" $ do
         parseProgram "import module" `shouldBe` Right [ImportModule "module"]

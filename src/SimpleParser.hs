@@ -71,7 +71,11 @@ data Expr
     | FuncCall String [Expr]      
     -- ^ Represents a function call in the AHA language. Function call: name, arguments
     | Return Expr 
-    -- ^ Represents a return statement in the AHA language. The Expr is the value to return.                 
+    -- ^ Represents a return statement in the AHA language. The Expr is the value to return.    
+    | DoWhileLoop Expr [Expr]
+    -- ^ Represents a do while loop in the AHA language. The first Expr is the condition, the list of Exprs is the body of the loop.
+    | WhileLoop Expr [Expr]
+    -- ^ Represents a while loop in the AHA language. The first Expr is the condition, the list of Exprs is the body of the loop.             
     deriving (Show, Eq)
 
 {-
@@ -476,6 +480,39 @@ forStatement = do
     return $ ForLoop counterVariable cond incr body
 
 {-
+    #######################################
+    #       While loop definitions        #
+    #######################################
+-}
+
+{-|
+Parses a do-while loop statement from the input. The parser consumes the keyword 'do' followed by the body of the loop enclosed in curly braces and the keyword 'loop' followed by the loop condition.
+
+@param s The string to be parsed as a do-while loop statement.
+@return A parser that produces an expression representing the do-while loop statement.
+-}
+doWhileLoop :: Parser Expr
+doWhileLoop = do
+    _ <- symbol "do"
+    body <- between (symbol "{") (symbol "}") (many statement)
+    _ <- symbol "loop"
+    cond <- expr
+    return $ DoWhileLoop cond body
+
+{-|
+Parses a while loop statement from the input. The parser consumes the keyword 'loop' followed by the loop condition and the body of the loop enclosed in curly braces.
+
+@param s The string to be parsed as a while loop statement.
+@return A parser that produces an expression representing the while loop statement.
+-}
+whileLoop :: Parser Expr
+whileLoop = do
+    _ <- symbol "loop"
+    cond <- expr
+    body <- between (symbol "{") (symbol "}") (many statement)
+    return $ WhileLoop cond body
+
+{-
     ##########################################
     #       IO statements definitions        #
     ##########################################
@@ -549,8 +586,10 @@ Parses a statement from the input. The parser consumes different kinds of statem
 -}
 statement :: Parser Expr
 statement = try assignment
+        <|> try whileLoop
         <|> try importModule
         <|> try functionCall
+        <|> try doWhileLoop
         <|> try forStatement
         <|> try ifStatement
         <|> try listLiteral

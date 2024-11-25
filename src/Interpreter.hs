@@ -306,10 +306,41 @@ eval (ImportModule name) = do
                     put (Map.union newEnv env)
             return NullVal
 
+eval (WhileLoop cond body) = do
+    evalWhile cond body
+
+eval (DoWhileLoop cond body) = do
+    _ <- evalBlock body
+    evalWhile cond body
+
+
 -- | The 'getListName' function returns the name of the list if is a variable.
 getListName :: Expr -> String
 getListName (Var name) = name
 getListName _ = error "Expected a variable name for list"
+
+{- |
+The evalWhile function is the one that will evaluate the while loop expression.
+It will evaluate the condition and body of the while loop and return the result of the evaluation.
+
+@param condition the condition of the while loop
+@param body the body of the while loop
+@returns the result of the evaluation
+@throws an error if the evaluation fails
+-}
+evalWhile :: Expr -> [Expr] -> Interpreter Value
+evalWhile condition body = do
+    condVal <- eval condition
+    case condVal of
+        BoolVal n -> do
+            if n == False
+                then return $ BoolVal False
+                else do
+                    _ <- evalBlock body
+                    evalWhile condition body
+        
+        _ -> throwError "Error while evaluating while loop: invalid condition"
+
 
 {- |
 The evalForLoop function is the one that will evaluate the for loop expression.
