@@ -498,6 +498,22 @@ spec = context "Interpreter" $ do
           result <- runInterpreter Map.empty exprs
           result `shouldBe` Left "Module ./test/nonExistentModule does not exist"
 
+    describe "While loops" $ do
+        it "should evaluate a while loop" $ do
+            let exprs = [Assign "x" (IntLit 0), WhileLoop (Lt (Var "x") (IntLit 2)) [Assign "x" (Add (Var "x") (IntLit 1))]]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 2)])
+        
+        it "should evaluate a while loop with multiple statements" $ do
+            let exprs = [Assign "x" (IntLit 0), WhileLoop (Lt (Var "x") (IntLit 2)) [Assign "x" (Add (Var "x") (IntLit 1)), Assign "y" (IntLit 42)]]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 2), ("y", IntVal 42)])
+        
+        it "should evaluate a do while loop" $ do
+            let exprs = [Assign "x" (IntLit 0), DoWhileLoop (Lt (Var "x") (IntLit 2)) [Assign "x" (Add (Var "x") (IntLit 1))]]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 2)])
+
     describe "For loop" $ do
       it "should evaluate a for loop" $ do
           let exprs = [ForLoop (Assign "x" (IntLit 0)) (Lt (Var "x") (IntLit 2)) (Assign "x" (Add (Var "x") (IntLit 1))) []]

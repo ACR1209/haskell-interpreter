@@ -10,7 +10,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Variable assignments
 - Simple conditional
 - Printing values
-- Looping (for loop)
+- Looping (for loop, do loop, while loop)
 - Conditional operators (<,>,>=,<=)
 - Lists and basic operations (pop, append, remove and add)
 - Comments
@@ -153,4 +153,20 @@ import ./example/funcs
 
 print "calling a function of the funcs.aha file, inside imports.aha 👀"
 print add(1,2)
+```
+
+### While loops
+```
+x = 1 
+
+do {
+    print x 
+    x = x + 1
+} loop (x < 0)
+
+y = 1
+loop (y < 5) {
+    print y
+    y = y + 1
+} 
 ```
