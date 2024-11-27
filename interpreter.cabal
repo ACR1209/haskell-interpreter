@@ -14,7 +14,7 @@ library
   hs-source-dirs: src
   exposed-modules: Interpreter, SimpleParser
   build-depends:
-    , parsec
+    , megaparsec
     , directory
     , containers
     , mtl 

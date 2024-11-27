@@ -388,17 +388,6 @@ spec = context "Interpreter" $ do
           result <- runInterpreter Map.empty exprs
           result `shouldBe` Left "Index out of bounds"
 
-    describe "Comments" $ do
-      it "should ignore single line comments" $ do
-          let exprs = [Comment "This is a comment", Assign "x" (IntLit 42)]
-          result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42)])
-      
-      it "should ignore multi line comments" $ do
-          let exprs = [MultiLineComment "This is a comment", Assign "x" (IntLit 42)]
-          result <- runInterpreter Map.empty exprs
-          result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 42)])
-
     describe "Function Definitions" $ do
       it "should evaluate a function definition" $ do
           let exprs = [FuncDef "add" ["x", "y"] [Return (Add (Var "x") (Var "y"))]]

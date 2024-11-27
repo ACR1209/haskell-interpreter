@@ -230,10 +230,6 @@ eval (ListAdd listExpr indexExpr elemExpr) = do
             else throwError "Index out of bounds"
         _ -> throwError "Type mismatch in list add"
 
-eval (Comment _) = return NullVal
-
-eval (MultiLineComment _) = return NullVal
-
 eval (FuncDef name params body) = do
     env <- get
     modify (Map.insert name (FuncVal params body env))
