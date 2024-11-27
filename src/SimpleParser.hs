@@ -2,8 +2,13 @@
 
 module SimpleParser where
 
-import Text.Parsec hiding (token)
-import Text.Parsec.String (Parser)
+import Text.Megaparsec hiding (token)
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
+import Data.Void (Void)
+
+
+type Parser = Parsec Void String
 
 data Expr
     = Var String 
@@ -60,10 +65,6 @@ data Expr
     -- ^ Represents the operation of removing an element from a list and return it. The first element is the list and the second the index to pop.
     | ListAdd Expr Expr Expr  
     -- ^ Represents the operation of adding an element to a list at a specific index. The first Expr is the list, the second is the index and the third is the element to add.
-    | Comment String 
-    -- ^ Represents a single line comment in the AHA language.
-    | MultiLineComment String 
-    -- ^ Represents a multi line comment in the AHA language.
     | ImportModule String 
     -- ^ Represents the import of a module in the AHA language. The string is the path of the module.
     | FuncDef String [String] [Expr]  
@@ -98,7 +99,7 @@ This is useful for tokenizing input where spaces are not significant.
 @return A new parser that applies 'p' and then consumes trailing spaces.
 -}
 token :: Parser a -> Parser a
-token p = p <* spaces
+token p = spaceConsumer *> p <* spaceConsumer
 
 {- | 
 Parses a specific symbol (string) from the input.
@@ -113,6 +114,9 @@ symbol :: String -> Parser String
 symbol = token . string
 
 
+spaceConsumer :: Parser ()
+spaceConsumer = L.space space1 (L.skipLineComment "#") (L.skipBlockComment "/*" "*/")
+
 {-|
 Parses an identifier, which is defined as a letter followed by zero or more alphanumeric characters.
 The parser consumes any leading whitespace or comments before parsing the identifier.
@@ -121,7 +125,7 @@ The parser consumes any leading whitespace or comments before parsing the identi
 @return A parser that produces a string representing the identifier.
 -}
 identifier :: Parser String
-identifier = token $ (:) <$> letter <*> many alphaNum
+identifier = token $ (:) <$> letterChar <*> many alphaNumChar
 
 {-|
 Parses an integer from the input. Consumes one or more digits from the input and converts them
@@ -132,8 +136,8 @@ is present in the input.
 @param s The string to be parsed as an integer.
 @return  A parser that produces an 'Int' from the input.
 -}
-integer :: Parser Int
-integer = token $ read <$> many1 digit
+integer :: Parser Integer
+integer = token L.decimal
 
 {-|
 Parses a string literal from the input. The parser consumes a sequence of characters enclosed in double quotes.
@@ -143,7 +147,7 @@ The 'many' combinator is used to parse zero or more characters between the quote
 @return A parser that produces a string representing the string literal.
 -}
 stringLiteral :: Parser String
-stringLiteral = token $ char '"' *> many (noneOf "\"") <* char '"'
+stringLiteral =  token (char '"' >> manyTill L.charLiteral (char '"'))
 
 {-|
 Parses a boolean literal from the input. The parser consumes the string "true" or "false" and returns the corresponding boolean value.
@@ -152,7 +156,7 @@ Parses a boolean literal from the input. The parser consumes the string "true" o
 @return A parser that produces a 'Bool' value.
 -}
 boolLiteral :: Parser Bool
-boolLiteral = token $ (True <$ string "true") <|> (False <$ string "false")
+boolLiteral = (True <$ string "true") <|> (False <$ string "false")
 
 
 {-|
@@ -164,9 +168,27 @@ Parses an assignment operation from the input. The parser consumes an identifier
 assignment :: Parser Expr
 assignment = do
     name <- identifier
-    _ <- symbol "="
+    _ <- L.symbol spaceConsumer "="
     val <- expr
     return $ Assign name val
+
+-- Helper to parse left-associative binary expressions
+parseLeftAssoc :: Parser Expr -> Parser (Expr -> Expr -> Expr) -> Parser Expr
+parseLeftAssoc base op = do
+    left <- base
+    rest left
+  where
+    rest left = (do
+        operator <- op
+        right <- base
+        rest (operator left right)) <|> return left
+
+addSubExpr :: Parser Expr
+addSubExpr = parseLeftAssoc mulDivExpr addSubOp
+
+mulDivExpr :: Parser Expr
+mulDivExpr = parseLeftAssoc term mulDivOp
+
 
 {-
     #######################################
@@ -180,8 +202,8 @@ Parses an addition or subtraction operator from the input.
 @return A parser that produces an expression representing an addition or subtraction operation.
 -}
 addSubOp :: Parser (Expr -> Expr -> Expr)
-addSubOp =   (Add <$ symbol "+")
-         <|> (Sub <$ symbol "-")
+addSubOp =   (Add <$ token (symbol "+"))
+         <|> (Sub <$ token (symbol "-"))
 
 
 {-|
@@ -190,8 +212,8 @@ Parses a multiplication or division operator from the input.
 @return A parser that produces an expression representing a multiplication or division operation.
 -}
 mulDivOp :: Parser (Expr -> Expr -> Expr)
-mulDivOp =   (Mul <$ symbol "*")
-         <|> (Div <$ symbol "/")
+mulDivOp =   (Mul <$ token (symbol "*"))
+         <|> (Div <$ token (symbol "/"))
 
 
 {-
@@ -282,38 +304,6 @@ listAdd = do
 
     return $ ListAdd list index element
 
-{-
-    #####################################
-    #       Comments definitions        #
-    #####################################
--}
-
-{-|
-Parses a single line comment from the input. The parser consumes a '#' character followed by any characters until a newline is encountered.
-
-@param s The string to be parsed as a single line comment.
-@return A parser that produces an expression representing the comment.
--}
-comments :: Parser Expr
-comments = do
-    _ <- symbol "#"
-    comment <- many (noneOf "\n")
-    optional (symbol "\n")
-    return $ Comment comment
-
-{-|
-Parses a multi-line comment from the input. The parser consumes the characters between '/*' and '*/'.
-
-@param s The string to be parsed as a multi-line comment.
-@return A parser that produces an expression representing the multi-line comment.
--}
-multiLineComment :: Parser Expr
-multiLineComment = do
-    _ <- symbol "/*"
-    comment <- manyTill anyChar (try $ symbol "*/")
-    let trimmedComment = reverse . dropWhile (== ' ') . reverse $ comment
-    return $ MultiLineComment trimmedComment
-
 
 {-
     ######################################
@@ -388,8 +378,8 @@ Parses an import statement from the input. The parser consumes the keyword 'impo
 importModule :: Parser Expr
 importModule = do
     _ <- symbol "import"
-    relativeModulePathString <- many (noneOf "\n")
-    optional (symbol "\n")
+    relativeModulePathString <- many (noneOf ("\n" :: String))
+    _ <- optional (symbol "\n")
     return $ ImportModule relativeModulePathString
 
 {-
@@ -405,13 +395,12 @@ Parses a comparison operation from the input. The parser consumes two expression
 @return A parser that produces an expression representing the comparison operation.
 -}
 comparison :: Parser Expr
-comparison = try (Eq <$> term <* symbol "==" <*> term)
-        <|> try (Neq <$> term <* symbol "!=" <*> term)
-        <|> try (Lt <$> term <* symbol "<" <*> term)
-        <|> try (Gt <$> term <* symbol ">" <*> term)
-        <|> try (Le <$> term <* symbol "<=" <*> term)
-        <|> try (Ge <$> term <* symbol ">=" <*> term)
-        <|> term  
+comparison = try (Eq <$> term <* token (symbol "==") <*> term)
+        <|> try (Neq <$> term <* token (symbol "!=") <*> term)
+        <|> try (Lt <$> term <* token (symbol "<") <*> term)
+        <|> try (Gt <$> term <* token (symbol ">") <*> term)
+        <|> try (Le <$> term <* token (symbol "<=") <*> term)
+        <|> try (Ge <$> term <* token (symbol ">=") <*> term)
 
 {-
     ###############################################
@@ -552,8 +541,10 @@ expr = try functionCall
     <|> try listAccess
     <|> try logicalOps
     <|> try listLiteral
-    <|> try comparison `chainl1` addSubOp
-    <|> term
+    <|> try comparison
+    <|> try addSubExpr
+    <|> try mulDivExpr
+    <|> try term
 
 {-|
 Parses a term from the input. The parser consumes a factor followed by an optional chain of multiplication/division operators.
@@ -562,7 +553,7 @@ Parses a term from the input. The parser consumes a factor followed by an option
 @return A parser that produces an expression representing the term.
 -}
 term :: Parser Expr
-term = factor `chainl1` mulDivOp
+term = try factor
 
 {-|
 Parses a factor from the input. The parser consumes a boolean literal, an identifier, an integer literal, a string literal, or an expression enclosed in parentheses.
@@ -574,7 +565,7 @@ factor :: Parser Expr
 factor =
     BoolLit <$> boolLiteral
     <|> Var <$> identifier
-    <|> IntLit <$> integer
+    <|> IntLit . fromInteger <$> integer
     <|> StrLit <$> stringLiteral
     <|> between (symbol "(") (symbol ")") expr
 
@@ -593,8 +584,6 @@ statement = try assignment
         <|> try forStatement
         <|> try ifStatement
         <|> try listLiteral
-        <|> try multiLineComment
-        <|> try comments
         <|> try printStatement
         <|> try functionDef
 
@@ -611,7 +600,7 @@ Parses a program from the input. The parser consumes multiple statements separat
 @return A parser that produces a list of expressions representing the program.
 -}
 program :: Parser [Expr]
-program = spaces *> many1 statement <* eof
+program = spaceConsumer *> many statement <* eof
 
 {-|
 Parses a program from a string input. The function takes a string representing the program and returns either a list of expressions or a parse error.
@@ -619,5 +608,7 @@ Parses a program from a string input. The function takes a string representing t
 @param s The string to be parsed as a program.
 @return Either a list of expressions or a parse error.
 -}
-parseProgram :: String -> Either ParseError [Expr]
-parseProgram = parse program ""
+parseProgram :: String -> Either String [Expr]
+parseProgram input = case parse program "" input of
+    Left err -> Left $ errorBundlePretty err
+    Right result -> Right result

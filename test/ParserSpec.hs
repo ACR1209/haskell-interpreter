@@ -76,19 +76,19 @@ spec = context "SimpleParser" $ do
 
     describe "Comments" $ do
       it "should parse single line comment" $ do
-        parseProgram "# This is a comment" `shouldBe` Right [Comment "This is a comment"]
+        parseProgram "# This is a comment" `shouldBe` Right []
       it "should parse multi line comment" $ do
-        parseProgram "/* This is a comment */" `shouldBe` Right [MultiLineComment "This is a comment"]
+        parseProgram "/* This is a comment */" `shouldBe` Right []
       it "should parse multi line comment with new lines" $ do
-        parseProgram "/* This is a \n comment */" `shouldBe` Right [MultiLineComment "This is a \n comment"]
+        parseProgram "/* This is a \n comment */" `shouldBe` Right []
       it "should parse a comment with a # in it" $ do
-        parseProgram "# This is a comment with a # in it" `shouldBe` Right [Comment "This is a comment with a # in it"]
+        parseProgram "# This is a comment with a # in it" `shouldBe` Right []
       it "should parse a comment with a /* in it" $ do
-        parseProgram "# This is a comment with a /* in it" `shouldBe` Right [Comment "This is a comment with a /* in it"]
+        parseProgram "# This is a comment with a /* in it" `shouldBe` Right []
       it "should parse a comment with a */ in it" $ do
-        parseProgram "# This is a comment with a */ in it" `shouldBe` Right [Comment "This is a comment with a */ in it"]        
+        parseProgram "# This is a comment with a */ in it" `shouldBe` Right []        
       it "should correctly parse inline comments on the side of a statement" $ do
-        parseProgram "x = 42 # This is a comment" `shouldBe` Right [Assign "x" (IntLit 42), Comment "This is a comment"]
+        parseProgram "x = 42 # This is a comment" `shouldBe` Right [Assign "x" (IntLit 42)]
 
     describe "Function definition" $ do
       it "should parse a function definition" $ do
