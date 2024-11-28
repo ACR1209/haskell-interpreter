@@ -74,6 +74,12 @@ spec = context "SimpleParser" $ do
       it "should parse list add" $ do
         parseProgram "x = [1, 2, 3] << 0 <<= 4" `shouldBe` Right [Assign "x" (ListAdd (ListLit [IntLit 1, IntLit 2, IntLit 3]) (IntLit 0) (IntLit 4))]
 
+    describe "Range" $ do
+      it "should parse range" $ do
+        parseProgram "x = 1..10" `shouldBe` Right [Assign "x" (ListRange (IntLit 1) (IntLit 10) (Nothing))]
+      it "should parse range with step" $ do
+        parseProgram "x = 1..10 stepping 2" `shouldBe` Right [Assign "x" (ListRange (IntLit 1) (IntLit 10) (Just (IntLit 2)))]
+
     describe "Comments" $ do
       it "should parse single line comment" $ do
         parseProgram "# This is a comment" `shouldBe` Right []

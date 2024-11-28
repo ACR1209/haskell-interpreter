@@ -422,7 +422,24 @@ spec = context "Interpreter" $ do
                 let exprs = [Assign "x" (IntLit 0), WhileLoop (Lt (Var "x") (IntLit 5)) [Assign "x" (Add (Var "x") (IntLit 1)), Next]]
                 result <- runInterpreter Map.empty exprs
                 result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 5)])
-            
+
+    describe "Range" $ do
+        it "should evaluate a range statement with a default step of 1" $ do
+            let exprs = [Assign "x" (ListRange (IntLit 1) (IntLit 5) Nothing)]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 1, IntVal 2, IntVal 3, IntVal 4, IntVal 5])])
+
+        it "should evaluate a range statement with a step of 2" $ do
+            let exprs = [Assign "x" (ListRange (IntLit 1) (IntLit 5) (Just (IntLit 2)))]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 1, IntVal 3, IntVal 5])])
+
+        it "should evaluate a range statement with a negative step" $ do
+            let exprs = [Assign "x" (ListRange (IntLit 5) (IntLit 1) (Just (IntLit (-1))))]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 5, IntVal 4, IntVal 3, IntVal 2, IntVal 1])])
+
+
     describe "Logical operations" $ do
       it "should evaluate logical and operator (and)" $ do
           let exprs = [Assign "x" (LogicAnd (BoolLit True) (BoolLit False))]

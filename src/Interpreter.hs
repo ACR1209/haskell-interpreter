@@ -318,6 +318,17 @@ eval Break = return BreakVal
 
 eval Next = return NextVal
 
+eval (ListRange start end optionalStep) = do
+    startVal <- eval start
+    endVal <- eval end
+    stepVal <- case optionalStep of
+        Just step -> eval step
+        Nothing -> return $ IntVal 1
+
+    case (startVal, endVal, stepVal) of
+        (IntVal s, IntVal e, IntVal st) -> return $ ListVal [IntVal x | x <- [s, s + st .. e]]
+        _ -> throwError "Type mismatch in list range"
+
 
 -- | The 'getListName' function returns the name of the list if is a variable.
 getListName :: Expr -> String

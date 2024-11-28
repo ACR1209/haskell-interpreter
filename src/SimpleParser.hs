@@ -80,7 +80,9 @@ data Expr
     | Next 
     -- ^ Represents the next statement in the AHA language.   
     | Break
-    -- ^ Represents the break statement in the AHA language.        
+    -- ^ Represents the break statement in the AHA language.   
+    | ListRange Expr Expr (Maybe Expr)
+    -- ^ Represents a range of elements in a list. The first Expr is the start index, the second is the end index, the third is the step.     
     deriving (Show, Eq)
 
 {-
@@ -308,6 +310,16 @@ listAdd = do
 
     return $ ListAdd list index element
 
+
+rangeStatement :: Parser Expr
+rangeStatement = do
+    start <- term
+    _ <- symbol ".."
+    end <- term
+    step <- optional $ do
+        _ <- symbol "stepping"
+        term
+    return $ ListRange start end step
 
 {-
     ######################################
@@ -599,6 +611,7 @@ Parses an expression from the input. The parser consumes a term followed by an o
 -}
 expr :: Parser Expr
 expr = try functionCall
+    <|> try rangeStatement
     <|> try listAdd
     <|> try listAppend
     <|> try listRemove
@@ -645,6 +658,7 @@ statement = try assignment
         <|> try whileLoop
         <|> try importModule
         <|> try functionCall
+        <|> try rangeStatement
         <|> try doWhileLoop
         <|> try forStatement
         <|> try ifStatement
