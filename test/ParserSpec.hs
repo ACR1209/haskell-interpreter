@@ -90,6 +90,31 @@ spec = context "SimpleParser" $ do
       it "should correctly parse inline comments on the side of a statement" $ do
         parseProgram "x = 42 # This is a comment" `shouldBe` Right [Assign "x" (IntLit 42)]
 
+    describe "Loop controls" $ do
+      it "should parse next statement inside a loop" $ do
+        parseProgram "loop (true) { next }" `shouldBe` Right [WhileLoop (BoolLit True) [Next]]
+
+      it "should parse next if statement inside a loop" $ do
+        parseProgram "loop (true) { next if true }" `shouldBe` Right [WhileLoop (BoolLit True) [If (BoolLit True) [Next] []]]
+
+      it "should parse next unless statement inside a loop" $ do
+        parseProgram "loop (true) { next unless true }" `shouldBe` Right [WhileLoop (BoolLit True) [If (BoolLit True) [] [Next]]]
+
+      it "should parse haltLoop statement inside a loop" $ do
+        parseProgram "loop (true) { haltLoop }" `shouldBe` Right [WhileLoop (BoolLit True) [Break]]
+
+      it "should throw an error if next statement is used outside a loop" $ do
+        parseProgram "next" `shouldSatisfy` isLeft
+
+      it "should throw an error if next if statement is used outside a loop" $ do
+        parseProgram "next if true" `shouldSatisfy` isLeft
+      
+      it "should throw an error if next unless statement is used outside a loop" $ do
+        parseProgram "next unless true" `shouldSatisfy` isLeft
+
+      it "should throw an error if haltLoop statement is used outside a loop" $ do
+        parseProgram "haltLoop" `shouldSatisfy` isLeft
+
     describe "Function definition" $ do
       it "should parse a function definition" $ do
         parseProgram "def add(x, y) { return x + y }" `shouldBe` Right [FuncDef "add" ["x", "y"] [Return (Add (Var "x") (Var "y"))]]

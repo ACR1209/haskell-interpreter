@@ -76,7 +76,11 @@ data Expr
     | DoWhileLoop Expr [Expr]
     -- ^ Represents a do while loop in the AHA language. The first Expr is the condition, the list of Exprs is the body of the loop.
     | WhileLoop Expr [Expr]
-    -- ^ Represents a while loop in the AHA language. The first Expr is the condition, the list of Exprs is the body of the loop.             
+    -- ^ Represents a while loop in the AHA language. The first Expr is the condition, the list of Exprs is the body of the loop.  
+    | Next 
+    -- ^ Represents the next statement in the AHA language.   
+    | Break
+    -- ^ Represents the break statement in the AHA language.        
     deriving (Show, Eq)
 
 {-
@@ -465,7 +469,7 @@ forStatement = do
     _ <- symbol ";"
     incr <- assignment  
     _ <- symbol ")"
-    body <-between (symbol "{") (symbol "}") (many statement)  
+    body <-between (symbol "{") (symbol "}") (many loopControlStatement)  
     return $ ForLoop counterVariable cond incr body
 
 {-
@@ -483,7 +487,7 @@ Parses a do-while loop statement from the input. The parser consumes the keyword
 doWhileLoop :: Parser Expr
 doWhileLoop = do
     _ <- symbol "do"
-    body <- between (symbol "{") (symbol "}") (many statement)
+    body <- between (symbol "{") (symbol "}") (many loopControlStatement)
     _ <- symbol "loop"
     cond <- expr
     return $ DoWhileLoop cond body
@@ -498,8 +502,69 @@ whileLoop :: Parser Expr
 whileLoop = do
     _ <- symbol "loop"
     cond <- expr
-    body <- between (symbol "{") (symbol "}") (many statement)
+    body <- between (symbol "{") (symbol "}") (many loopControlStatement)
     return $ WhileLoop cond body
+
+{-
+    ####################################################
+    #       Loop control statements definitions        #
+    ####################################################
+-}
+
+{-|
+Parses a next if statement from the input. The parser consumes the keyword 'next' followed by the keyword 'if' and a condition.
+    
+@param s The string to be parsed as a next if statement.
+@return A parser that produces an expression representing the next if statement.
+-}
+nextIfStatement :: Parser Expr
+nextIfStatement = do
+    _ <- symbol "next"
+    _ <- symbol "if"
+    cond <- expr
+    return $ If cond [Next] []
+
+{-|
+Parses a next unless statement from the input. The parser consumes the keyword 'next' followed by the keyword 'unless' and a condition.
+
+@param s The string to be parsed as a next unless statement.
+@return A parser that produces an expression representing the next unless statement.
+-}
+nextUnlessStatement :: Parser Expr
+nextUnlessStatement = do
+    _ <- symbol "next"
+    _ <- symbol "unless"
+    cond <- expr
+    return $ If cond [] [Next]
+
+{-|
+Parses a next statement from the input. The parser consumes the keyword 'next'.
+
+@param s The string to be parsed as a next statement.
+@return A parser that produces an expression representing the next statement.
+-}
+nextStatement :: Parser Expr
+nextStatement = do
+    _ <- symbol "next"
+    return Next
+
+{-|
+Parses a break statement from the input. The parser consumes the keyword 'haltLoop'.
+
+@param s The string to be parsed as a break statement.
+@return A parser that produces an expression representing the break statement.
+-}
+breakStatement :: Parser Expr
+breakStatement = do
+    _ <- symbol "haltLoop"
+    return Break
+
+loopControlStatement :: Parser Expr
+loopControlStatement = try nextIfStatement
+                    <|> try nextUnlessStatement
+                    <|> try breakStatement
+                    <|> try nextStatement
+                    <|> try statement
 
 {-
     ##########################################

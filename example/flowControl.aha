@@ -1,0 +1,19 @@
+loop (true) {
+    print "once"
+    haltLoop
+}
+
+for (i = 0; i < 5; i = i + 1) {
+    next if i < 4
+    print i
+}
+
+for (i = 0; i < 5; i = i + 1) {
+    next unless i < 3
+    print i
+}
+
+for (i = 0; i < 5; i = i + 1) {
+    next
+    print i
+}

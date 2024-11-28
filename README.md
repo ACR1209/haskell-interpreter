@@ -17,6 +17,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Function definitions
 - Basic logical operation
 - Basic module handling
+- Loop flow control (haltLoop, next, next if, next unless)
 
 ## Examples
 
@@ -169,4 +170,28 @@ loop (y < 5) {
     print y
     y = y + 1
 } 
+```
+
+### Loop flow control
+
+```
+loop (true) {
+    print "once"
+    haltLoop
+}
+
+for (i = 0; i < 5; i = i + 1) {
+    next if i < 4
+    print i
+}
+
+for (i = 0; i < 5; i = i + 1) {
+    next unless i < 3
+    print i
+}
+
+for (i = 0; i < 5; i = i + 1) {
+    next
+    print i
+}
 ```

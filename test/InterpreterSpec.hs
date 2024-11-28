@@ -405,6 +405,24 @@ spec = context "Interpreter" $ do
           result <- runInterpreter Map.empty exprs
           result `shouldBe` Right (IntVal 0, Map.fromList [("add", FuncVal ["x", "y"] [Return (Add (Var "x") (Var "y"))] Map.empty), ("z", IntVal 3)])
 
+    describe "Loop controls" $ do
+        describe "haltLoop statement" $ do
+            it "should evaluate a haltLoop statement" $ do
+                let exprs = [WhileLoop (BoolLit True) [Assign "x" (IntLit 1), Break, Assign "y" (IntLit 2)]]
+                result <- runInterpreter Map.empty exprs
+                result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 1)])
+            
+            it "should evaluate a haltLoop statement inside a nested loop" $ do
+                let exprs = [WhileLoop (BoolLit True) [Assign "x" (IntLit 1), WhileLoop (BoolLit True) [Assign "y" (IntLit 2), Break, Assign "z" (IntLit 3)], Break, Assign "w" (IntLit 4)]]
+                result <- runInterpreter Map.empty exprs
+                result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 1), ("y", IntVal 2)])
+
+        describe "next statements" $ do
+            it "should evaluate a next statement" $ do
+                let exprs = [Assign "x" (IntLit 0), WhileLoop (Lt (Var "x") (IntLit 5)) [Assign "x" (Add (Var "x") (IntLit 1)), Next]]
+                result <- runInterpreter Map.empty exprs
+                result `shouldBe` Right (IntVal 0, Map.fromList [("x", IntVal 5)])
+            
     describe "Logical operations" $ do
       it "should evaluate logical and operator (and)" $ do
           let exprs = [Assign "x" (LogicAnd (BoolLit True) (BoolLit False))]
