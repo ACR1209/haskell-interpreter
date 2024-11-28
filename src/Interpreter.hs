@@ -28,7 +28,12 @@ data Value =
     -- ^ It represents a null value
     | FuncVal [String] [Expr] Env
     -- ^ It represents a function value
+    | NextVal
+    -- ^ It represents a next value
+    | BreakVal
+    -- ^ It represents a break value
     deriving (Show, Eq)
+
 
 -- | The 'Env' type represents the environment of the interpreter, meaning where state is stored.
 type Env = Map.Map String Value
@@ -309,6 +314,10 @@ eval (DoWhileLoop cond body) = do
     _ <- evalBlock body
     evalWhile cond body
 
+eval Break = return BreakVal
+
+eval Next = return NextVal
+
 
 -- | The 'getListName' function returns the name of the list if is a variable.
 getListName :: Expr -> String
@@ -328,15 +337,14 @@ evalWhile :: Expr -> [Expr] -> Interpreter Value
 evalWhile condition body = do
     condVal <- eval condition
     case condVal of
-        BoolVal n -> do
-            if n == False
-                then return $ BoolVal False
-                else do
-                    _ <- evalBlock body
-                    evalWhile condition body
-        
+        BoolVal True -> do
+            result <- evalBlockWithControl body
+            case result of
+                BreakVal -> return NullVal  
+                NextVal -> evalWhile condition body 
+                _ -> evalWhile condition body 
+        BoolVal False -> return NullVal 
         _ -> throwError "Error while evaluating while loop: invalid condition"
-
 
 {- |
 The evalForLoop function is the one that will evaluate the for loop expression.
@@ -346,20 +354,33 @@ evalForLoop :: Expr -> Expr -> [Expr] -> Interpreter Value
 evalForLoop cond incr body = do
     condVal <- eval cond
     case condVal of
-        BoolVal n -> do
-            if n == False
-                then return $ BoolVal False
-                else do
-                    _ <- evalBlock body
-                    _ <- eval incr
-
+        BoolVal True -> do
+            result <- evalBlockWithControl body
+            case result of
+                BreakVal -> return NullVal  
+                NextVal -> do
+                    _ <- eval incr  
                     evalForLoop cond incr body
-        
+                _ -> do
+                    _ <- eval incr
+                    evalForLoop cond incr body
+        BoolVal False -> return NullVal 
         _ -> throwError "Error while evaluating for loop: invalid condition"
+
 
 -- | The 'evalBlock' function evaluates a block of expressions.
 evalBlock :: [Expr] -> Interpreter Value
 evalBlock = foldM (\_ exprs -> eval exprs) NullVal
+
+-- | The 'evalBlockWithControl' function evaluates a block of expressions with control.
+evalBlockWithControl :: [Expr] -> Interpreter Value
+evalBlockWithControl [] = return NullVal
+evalBlockWithControl (expression:expressions) = do
+    result <- eval expression
+    case result of
+        BreakVal -> return BreakVal  
+        NextVal -> return NextVal    
+        _ -> evalBlockWithControl expressions        
 
 -- | The 'valueToString' function converts a value to a string.
 valueToString :: Value -> String
@@ -369,6 +390,9 @@ valueToString (BoolVal b)  = if b then "true" else "false"
 valueToString NullVal      = "null"
 valueToString (ListVal l)  = "[" ++ (intercalate ", " (map valueToString l)) ++ "]"
 valueToString (FuncVal _ _ _) = "<function>"
+valueToString NextVal      = "next"
+
+valueToString BreakVal     = "haltLoop"
 
 {- |
 The runInterpreter function is the one that will run the interpreter.
