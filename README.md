@@ -19,6 +19,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Basic module handling
 - Loop flow control (haltLoop, next, next if, next unless)
 - Ranges
+- Objects
 
 ## Examples
 
@@ -201,4 +202,32 @@ for (i = 0; i < 5; i = i + 1) {
     next
     print i
 }
+```
+
+### Objects
+```
+x = {
+    hello: "world",
+    name: "this",
+    "anotherObject": {
+        test: 2
+    }
+}
+
+print x
+
+print x.hello
+
+print x.anotherObject.test
+
+print {hello: 2}.hello
+
+x.adding = "added"
+x.anotherObject.adding = "this also adds"
+
+x.anotherObject.objectAdded = {
+    "objectAdd": 1
+}
+
+print x
 ```

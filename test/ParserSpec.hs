@@ -80,6 +80,47 @@ spec = context "SimpleParser" $ do
       it "should parse range with step" $ do
         parseProgram "x = 1..10 stepping 2" `shouldBe` Right [Assign "x" (ListRange (IntLit 1) (IntLit 10) (Just (IntLit 2)))]
 
+    describe "Objects" $ do
+      it "should parse object literal" $ do
+        parseProgram "x = {name: \"John\", age: 30}" `shouldBe` Right [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30)])]
+
+      it "should parse object literal with empty object" $ do
+        parseProgram "x = {}" `shouldBe` Right [Assign "x" (ObjectDef [])]
+
+      it "should parse object literal with property keys as strings" $ do
+        parseProgram "x = {\"name\": \"John\", \"age\": 30}" `shouldBe` Right [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30)])]
+
+      it "should parse object literal with nested object" $ do
+        parseProgram "x = {name: \"John\", age: 30, address: {city: \"New York\", country: \"USA\"}}" `shouldBe` Right [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30), ("address", ObjectDef [("city", StrLit "New York"), ("country", StrLit "USA")])])]
+
+      it "should parse object access" $ do
+        parseProgram "x = {name: \"John\", age: 30}\ny=x.name" `shouldBe` Right [Assign "x" (ObjectDef [("name",StrLit "John"),("age",IntLit 30)]),Assign "y" (ObjectAccess (Var "x") "name")]
+    
+      it "should parse object access with nested object" $ do
+        parseProgram "x = {name: \"John\", age: 30, address: {city: \"New York\", country: \"USA\"}}\ny=x.address.city" `shouldBe` Right [Assign "x" (ObjectDef [("name",StrLit "John"),("age",IntLit 30),("address",ObjectDef [("city",StrLit "New York"),("country",StrLit "USA")])]),Assign "y" (ObjectAccess (ObjectAccess (Var "x") "address") "city")]
+
+      it "should parse object and allow access directly" $ do
+        parseProgram "x = {name: \"John\", age: 30}.name" `shouldBe` Right [Assign "x" (ObjectAccess (ObjectDef [("name",StrLit "John"),("age",IntLit 30)]) "name")]
+      
+      it "should parse anonymous object" $ do
+        parseProgram "x = {\"name\": \"John\", \"age\": 30}" `shouldBe` Right [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30)])]
+
+      it "should parse object set" $ do
+        parseProgram "x = {name: \"John\", age: 30}\nx.name = \"Jane\"" `shouldBe` Right [Assign "x" (ObjectDef [("name",StrLit "John"),("age",IntLit 30)]),ObjectSet (Var "x") "name" (StrLit "Jane")]
+
+      it "should parse object set with nested object" $ do
+        parseProgram "x = {name: \"John\", age: 30, address: {city: \"New York\", country: \"USA\"}}\nx.address.city = \"Los Angeles\"" `shouldBe` Right [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30), ("address", ObjectDef [("city", StrLit "New York"), ("country", StrLit "USA")])]), ObjectSet (Var "x") "address.city" (StrLit "Los Angeles")]
+
+      it "should parse object set by setting a property to an object" $ do
+        parseProgram "x = {name: \"John\", age: 30}\nx.address = {city: \"New York\", country: \"USA\"}" `shouldBe` Right [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30)]), ObjectSet (Var "x") "address" (ObjectDef [("city", StrLit "New York"), ("country", StrLit "USA")])]
+
+      it "should parse a boolean property" $ do
+        parseProgram "x = {name: \"John\", age: 30, isStudent: true}" `shouldBe` Right [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30), ("isStudent", BoolLit True)])]
+
+      it "should parse properly independent of the line breaks" $ do
+        parseProgram "x = {\nname: \"John\", age: 30,\n isStudent: true\n}\n" `shouldBe` Right [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30), ("isStudent", BoolLit True)])]
+
+
     describe "Comments" $ do
       it "should parse single line comment" $ do
         parseProgram "# This is a comment" `shouldBe` Right []

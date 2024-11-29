@@ -19,6 +19,7 @@ library
     , containers
     , mtl 
     , text
+    , split
 
 executable interpreter
   import: common

@@ -439,6 +439,47 @@ spec = context "Interpreter" $ do
             result <- runInterpreter Map.empty exprs
             result `shouldBe` Right (IntVal 0, Map.fromList [("x", ListVal [IntVal 5, IntVal 4, IntVal 3, IntVal 2, IntVal 1])])
 
+    describe "Objects" $ do
+        it "should evaluate an object literal" $ do
+            let exprs = [Assign "x" (ObjectDef [("a", IntLit 1), ("b", IntLit 2)])]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ObjectVal [("a", IntVal 1), ("b", IntVal 2)])])
+        
+        it "should evaluate nested object literals" $ do
+            let exprs = [Assign "x" (ObjectDef [("a", IntLit 1), ("b", ObjectDef [("c", IntLit 2)])])]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ObjectVal [("a", IntVal 1), ("b", ObjectVal [("c", IntVal 2)])])])
+
+        it "should evaluate an object access" $ do
+            let exprs = [Assign "x" (ObjectDef [("a", IntLit 1), ("b", IntLit 2)]), Assign "y" (ObjectAccess (Var "x") "a")]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ObjectVal [("a", IntVal 1), ("b", IntVal 2)]), ("y", IntVal 1)])
+
+        it "should evaluate an object access with nested objects" $ do
+            let exprs = [Assign "x" (ObjectDef [("a", IntLit 1), ("b", ObjectDef [("c", IntLit 2)])]), Assign "y" (ObjectAccess (ObjectAccess (Var "x") "b") "c")]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ObjectVal [("a", IntVal 1), ("b", ObjectVal [("c", IntVal 2)])]), ("y", IntVal 2)])
+
+        it "should evaluate object set" $ do
+            let exprs = [Assign "x" (ObjectDef [("a", IntLit 1), ("b", IntLit 2)]), ObjectSet (Var "x") "a" (IntLit 3)]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ObjectVal [("b",IntVal 2),("a",IntVal 3)])])
+        
+        it "should evaluate object set with nested objects" $ do
+            let exprs = [Assign "x" (ObjectDef [("a", IntLit 1), ("d", IntLit 3), ("b", ObjectDef [("c", IntLit 2)])]), ObjectSet (Var "x") "b.c" (IntLit 3)]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ObjectVal [("b",ObjectVal [("c",IntVal 3)]),("a",IntVal 1),("d",IntVal 3)])])
+
+        it "should evaluate setting an object property to another object" $ do
+            let exprs = [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30)]), ObjectSet (Var "x") "address" (ObjectDef [("city", StrLit "New York"), ("country", StrLit "USA")])]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ObjectVal [("name",StrVal "John"),("age",IntVal 30),("address",ObjectVal [("city",StrVal "New York"),("country",StrVal "USA")])])])
+        
+        it "should evaluate an object boolean property" $ do
+            let exprs = [Assign "x" (ObjectDef [("a", BoolLit True), ("b", BoolLit False)]), Assign "y" (ObjectAccess (Var "x") "a")]
+            result <- runInterpreter Map.empty exprs
+            result `shouldBe` Right (IntVal 0, Map.fromList [("x", ObjectVal [("a", BoolVal True), ("b", BoolVal False)]), ("y", BoolVal True)])
+
 
     describe "Logical operations" $ do
       it "should evaluate logical and operator (and)" $ do
@@ -521,6 +562,67 @@ spec = context "Interpreter" $ do
           let exprs = [ImportModule "./test/nonExistentModule"]
           result <- runInterpreter Map.empty exprs
           result `shouldBe` Left "Module ./test/nonExistentModule does not exist"
+
+    describe "Value to string" $ do
+        it "should correctly format an integer" $ do
+            let exprs = IntVal 42
+            let result = valueToString exprs
+    
+            result `shouldBe` "42"
+        
+        it "should correctly format a string" $ do
+            let exprs = StrVal "hello"
+            let result = valueToString exprs
+    
+            result `shouldBe` "\"hello\""
+    
+        it "should correctly format boolean true" $ do
+            let exprs = BoolVal True
+            let result = valueToString exprs
+    
+            result `shouldBe` "true"
+        
+        it "should correctly format boolean false" $ do
+            let exprs = BoolVal False
+            let result = valueToString exprs
+    
+            result `shouldBe` "false"
+        
+        it "should correctly format a list" $ do
+            let exprs = ListVal [IntVal 1, IntVal 2, IntVal 3]
+            let result = valueToString exprs
+    
+            result `shouldBe` "[1, 2, 3]"
+        
+        it "should correctly format a list with strings" $ do
+            let exprs = ListVal [StrVal "hello", StrVal "world"]
+            let result = valueToString exprs
+    
+            result `shouldBe` "[\"hello\", \"world\"]"
+        
+        it "should correctly format a list with mixed types" $ do
+            let exprs = ListVal [IntVal 1, StrVal "hello", BoolVal True]
+            let result = valueToString exprs
+    
+            result `shouldBe` "[1, \"hello\", true]"
+        
+        it "should be able to show a function" $ do
+            let exprs = FuncVal ["x", "y"] [Add (Var "x") (Var "y")] Map.empty
+            let result = valueToString exprs
+    
+            result `shouldBe` "<function>"
+    
+        it "should be able to show null" $ do
+            let exprs = NullVal
+            let result = valueToString exprs
+    
+            result `shouldBe` "null"
+        
+        it "should be able to show an object" $ do
+            let exprs = ObjectVal [("a", IntVal 1), ("b", IntVal 2)]
+            let result = valueToString exprs
+    
+            result `shouldBe` "{a: 1, b: 2}"
 
     describe "While loops" $ do
         it "should evaluate a while loop" $ do
