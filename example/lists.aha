@@ -13,3 +13,9 @@ print z
 
 x = x << 1 <<= 5 # Add 5 to the list, placing it a the index 1 position 
 print x
+
+w = 1..10 
+print w
+
+w = 1..10 stepping 2
+print w

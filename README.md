@@ -18,6 +18,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Basic logical operation
 - Basic module handling
 - Loop flow control (haltLoop, next, next if, next unless)
+- Ranges
 
 ## Examples
 
@@ -105,6 +106,12 @@ print z
 
 x = x << 1 <<= 5 # Add 5 to the list, placing it a the index 1 position 
 print x
+
+w = 1..10 
+print w
+
+w = 1..10 stepping 2
+print w
 ```
 
 ### Comments
