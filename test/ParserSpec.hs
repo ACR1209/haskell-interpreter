@@ -120,6 +120,40 @@ spec = context "SimpleParser" $ do
       it "should parse properly independent of the line breaks" $ do
         parseProgram "x = {\nname: \"John\", age: 30,\n isStudent: true\n}\n" `shouldBe` Right [Assign "x" (ObjectDef [("name", StrLit "John"), ("age", IntLit 30), ("isStudent", BoolLit True)])]
 
+    describe "String interpolation" $ do
+      it "should parse string interpolation" $ do
+        parseProgram "x = f\"Hello, {name}\"" `shouldBe` Right [Assign "x" (StringInterpolation ["Hello, ", ""] [(Var "name")])]
+
+      it "should parse multiple string interpolation" $ do
+                parseProgram "x = f\"Hello, {name} {age}\"" `shouldBe` Right [Assign "x" (StringInterpolation ["Hello, ", " ", ""] [(Var "name"), (Var "age")])]
+
+
+    describe "getInterpolationsFromString" $ do
+      it "should get interpolations from a string" $ do
+        getInterpolationsFromString "Hello, {name}" `shouldBe` ["name"]
+    
+      it "should get multiple interpolations from a string" $ do
+        getInterpolationsFromString "Hello, {name}, {age}" `shouldBe` ["name", "age"]
+
+      it "should get interpolations from a string with multiple interpolations in a row" $ do
+        getInterpolationsFromString "Hello, {name}{age}" `shouldBe` ["name", "age"]
+
+      it "should get interpolations from a string with multiple interpolations in a row and some text in between" $ do
+        getInterpolationsFromString "Hello, {name} is {age} years old" `shouldBe` ["name", "age"]
+
+    describe "parseInterpolations" $ do
+      it "should parse expressions given certain interpolations" $ do
+        parseInterpolations ["name", "true", "1+3"] `shouldBe` [Var "name", BoolLit True, Add (IntLit 1) (IntLit 3)]
+
+      it "should work if no interpolation given" $ do
+        parseInterpolations [] `shouldBe` []
+
+    describe "splitAndRemoveInterpolations" $ do
+      it "should remove interpolations of a string given the list of interpolations" $ do
+        splitAndRemoveInterpolations "hello, {name}. You are {age} years old!" ["name", "age"] `shouldBe` ["hello, ", ". You are ", " years old!"]
+
+      it "should contain a singlenton list of strings if no interpolation is present" $ do
+        splitAndRemoveInterpolations "hello!" [] `shouldBe` ["hello!"]
 
     describe "Comments" $ do
       it "should parse single line comment" $ do

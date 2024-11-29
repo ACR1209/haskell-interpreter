@@ -20,6 +20,7 @@ The language that is interpreted is called AHA, it's syntax is block based denot
 - Loop flow control (haltLoop, next, next if, next unless)
 - Ranges
 - Objects
+- String interpolation
 
 ## Examples
 
@@ -230,4 +231,11 @@ x.anotherObject.objectAdded = {
 }
 
 print x
+```
+
+### String interpolation
+```
+x = "interpolation"
+print f"string {x}"
+print f"1+1={1+1} {1}"
 ```

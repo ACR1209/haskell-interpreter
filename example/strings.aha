@@ -1,0 +1,3 @@
+x = "interpolation"
+print f"string {x}"
+print f"1+1={1+1} {1}"
