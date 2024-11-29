@@ -1,0 +1,24 @@
+x = {
+    hello: "world",
+    name: "this",
+    "anotherObject": {
+        test: 2
+    }
+}
+
+print x
+
+print x.hello
+
+print x.anotherObject.test
+
+print {hello: 2}.hello
+
+x.adding = "added"
+x.anotherObject.adding = "this also adds"
+
+x.anotherObject.objectAdded = {
+    "objectAdd": 1
+}
+
+print x

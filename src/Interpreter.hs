@@ -4,6 +4,8 @@ import SimpleParser
 import qualified Data.Map as Map
 import Control.Monad.Except
 import Data.List (intercalate)
+import Data.Text (splitOn)
+import qualified Data.Text as T
 import Control.Monad (foldM)
 import Control.Monad.State
 import System.Directory (doesFileExist)
@@ -32,6 +34,8 @@ data Value =
     -- ^ It represents a next value
     | BreakVal
     -- ^ It represents a break value
+    | ObjectVal [(String, Value)]
+    -- ^ It represents an object value
     deriving (Show, Eq)
 
 
@@ -329,11 +333,65 @@ eval (ListRange start end optionalStep) = do
         (IntVal s, IntVal e, IntVal st) -> return $ ListVal [IntVal x | x <- [s, s + st .. e]]
         _ -> throwError "Type mismatch in list range"
 
+eval (ObjectDef properties) = do
+    vals <- mapM evalObjectProperty properties
+    return $ ObjectVal vals
+  where
+    evalObjectProperty (name, exprs) = do
+        val <- eval exprs
+        return (name, val)
+
+eval (ObjectAccess objExpr prop) = do
+    objVal <- eval objExpr
+    case objVal of
+        ObjectVal props -> case lookup prop props of
+            Just val -> return val
+            Nothing -> throwError $ "Property " ++ prop ++ " not found"
+        _ -> throwError "Type mismatch in object access"
+
+-- TODO: Implement so it alters in place and does not alter the order of the properties
+eval (ObjectSet objExpr prop valExpr) = do
+    objVal <- eval objExpr
+    valVal <- eval valExpr
+    case objVal of
+        ObjectVal props -> do
+            let filteredProps = removeNestedProperty props (map T.unpack (splitPropName (T.pack prop)))
+            let newProps = setNestedProperty filteredProps (map T.unpack (splitPropName (T.pack prop))) valVal
+            modify (Map.insert (getObjectName objExpr) (ObjectVal newProps))
+            return $ ObjectVal newProps
+        _ -> throwError "Type mismatch in object set"
+  where
+    splitPropName = splitOn (T.pack ".")
+
+    -- Takes a prop list and a list of properties to remove
+    removeNestedProperty :: [(String, Value)] -> [String] -> [(String, Value)]
+    removeNestedProperty props [p] = filter (\(k, _) -> k /= p) props
+    removeNestedProperty props [] = props
+    removeNestedProperty props (p:rest) = case lookup p props of
+        Just (ObjectVal nestedProps) -> 
+            let updatedNestedProps = removeNestedProperty nestedProps rest
+            in (p, ObjectVal updatedNestedProps) : filter (\(k, _) -> k /= p) props
+        Just _ -> error "Cannot remove nested property on non-object"
+        Nothing -> props
+    
+    -- Takes a prop list and searches for insert point
+    setNestedProperty :: [(String, Value)] -> [String] -> Value -> [(String, Value)]
+    setNestedProperty props [p] val = props ++ [(p, val)]
+    setNestedProperty props [] _ = props
+    setNestedProperty props (p:rest) val = case lookup p props of
+        Just (ObjectVal nestedProps) -> (p, ObjectVal (setNestedProperty nestedProps rest val)) : filter (\(k, _) -> k /= p) props
+        Just _ -> error "Cannot set nested property on non-object"
+        Nothing -> (p, ObjectVal (setNestedProperty [] rest val)) : filter (\(k, _) -> k /= p) props
 
 -- | The 'getListName' function returns the name of the list if is a variable.
 getListName :: Expr -> String
 getListName (Var name) = name
 getListName _ = error "Expected a variable name for list"
+
+-- | The 'getObjectName' function returns the name of the object if it is a variable.
+getObjectName :: Expr -> String
+getObjectName (Var name) = name
+getObjectName x = error $ "Expected a variable name for object, but got: " ++ show x
 
 {- |
 The evalWhile function is the one that will evaluate the while loop expression.
@@ -402,8 +460,8 @@ valueToString NullVal      = "null"
 valueToString (ListVal l)  = "[" ++ (intercalate ", " (map valueToString l)) ++ "]"
 valueToString (FuncVal _ _ _) = "<function>"
 valueToString NextVal      = "next"
-
 valueToString BreakVal     = "haltLoop"
+valueToString (ObjectVal props) = "{" ++ (intercalate ", " (map (\(name, val) -> name ++ ": " ++ valueToString val) props)) ++ "}"
 
 {- |
 The runInterpreter function is the one that will run the interpreter.

@@ -83,6 +83,12 @@ data Expr
     -- ^ Represents the break statement in the AHA language.   
     | ListRange Expr Expr (Maybe Expr)
     -- ^ Represents a range of elements in a list. The first Expr is the start index, the second is the end index, the third is the step.     
+    | ObjectDef [(String, Expr)]
+    -- ^ Represents an object definition in the AHA language. The list of tuples represents the object properties.
+    | ObjectAccess Expr String
+    -- ^ Represents the access to a property of an object. The first Expr is the object and the string is the property name.
+    | ObjectSet Expr String Expr
+    -- ^ Represents the setting of a property of an object. The first Expr is the object, the string is the property name and the third Expr is the value to set.
     deriving (Show, Eq)
 
 {-
@@ -162,7 +168,7 @@ Parses a boolean literal from the input. The parser consumes the string "true" o
 @return A parser that produces a 'Bool' value.
 -}
 boolLiteral :: Parser Bool
-boolLiteral = (True <$ string "true") <|> (False <$ string "false")
+boolLiteral = token (True <$ string "true") <|> token (False <$ string "false")
 
 
 {-|
@@ -598,6 +604,69 @@ printStatement = do
 
 
 {-
+    ####################################
+    #       Objects definitions        #
+    ####################################
+-}
+
+{-|
+Parses a property from the input. The parser consumes a property name followed by a colon and an expression.
+
+@param s The string to be parsed as a property.
+@return A parser that produces a tuple representing a property.
+-}
+property :: Parser (String, Expr)
+property = do
+    name <- try identifier <|> stringLiteral
+    _ <- symbol ":"
+    value <- expr
+    return (name, value)
+
+{-|
+Parses an object definition from the input. The parser consumes a list of properties enclosed in curly braces.
+
+@param s The string to be parsed as an object definition.
+@return A parser that produces an expression representing the object definition.
+-}
+objectDef :: Parser Expr
+objectDef = do
+    properties <- between (symbol "{") (symbol "}") (property `sepBy` symbol ",")
+    return $ ObjectDef properties
+
+{-|
+Parses an object access operation from the input. The parser consumes an object or a variable followed by a dot operator and a property name.
+
+@param s The string to be parsed as an object access operation.
+@return A parser that produces an expression representing the object access operation.
+-}
+objectAccess :: Parser Expr
+objectAccess = do
+    obj <- try objectDef <|> try (Var <$> identifier)
+    props <- some (symbol "." *> identifier)
+    return $ foldl ObjectAccess obj props
+
+{-|
+Parses an object set operation from the input. The parser consumes an object or a variable followed by a dot operator, a property name, the '=' operator, and an expression.
+
+@param s The string to be parsed as an object set operation.
+@return A parser that produces an expression representing the object set operation.
+-}
+objectSet :: Parser Expr
+objectSet = do
+    obj <- try objectDef <|> try (Var <$> identifier)
+    propNames <- some (symbol "." *> identifier)
+    _ <- symbol "="
+    value <- expr
+    let propName = concatMap (++ ".") (init propNames) ++ last propNames
+    return $ ObjectSet obj propName value
+
+-- | Parses all posible object operations
+objectOperations :: Parser Expr
+objectOperations = try objectSet
+                <|> try objectAccess
+                <|> try objectDef
+
+{-
     ########################################
     #       High level definitions        #
     ########################################
@@ -611,7 +680,9 @@ Parses an expression from the input. The parser consumes a term followed by an o
 -}
 expr :: Parser Expr
 expr = try functionCall
+    <|> try functionDef
     <|> try rangeStatement
+    <|> objectOperations
     <|> try listAdd
     <|> try listAppend
     <|> try listRemove
@@ -655,6 +726,7 @@ Parses a statement from the input. The parser consumes different kinds of statem
 -}
 statement :: Parser Expr
 statement = try assignment
+        <|> objectOperations
         <|> try whileLoop
         <|> try importModule
         <|> try functionCall
