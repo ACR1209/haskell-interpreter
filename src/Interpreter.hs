@@ -383,6 +383,13 @@ eval (ObjectSet objExpr prop valExpr) = do
         Just _ -> error "Cannot set nested property on non-object"
         Nothing -> (p, ObjectVal (setNestedProperty [] rest val)) : filter (\(k, _) -> k /= p) props
 
+eval (StringInterpolation strs exprs) = do
+    let exprsVals = mapM eval exprs
+    exprVals <- exprsVals
+    let strVals = map (valueToStringInterpolated) exprVals
+    let interpolatedStr = concat $ intercalate [""] (zipWith (\s e -> [s, e]) strs strVals)
+    return $ StrVal interpolatedStr
+
 -- | The 'getListName' function returns the name of the list if is a variable.
 getListName :: Expr -> String
 getListName (Var name) = name
@@ -462,6 +469,10 @@ valueToString (FuncVal _ _ _) = "<function>"
 valueToString NextVal      = "next"
 valueToString BreakVal     = "haltLoop"
 valueToString (ObjectVal props) = "{" ++ (intercalate ", " (map (\(name, val) -> name ++ ": " ++ valueToString val) props)) ++ "}"
+
+valueToStringInterpolated :: Value -> String
+valueToStringInterpolated (StrVal s)   = s
+valueToStringInterpolated otherVal = valueToString otherVal
 
 {- |
 The runInterpreter function is the one that will run the interpreter.

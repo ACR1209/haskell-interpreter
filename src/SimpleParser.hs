@@ -6,7 +6,8 @@ import Text.Megaparsec hiding (token)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Data.Void (Void)
-
+import Data.Text (splitOn)
+import qualified Data.Text as T
 
 type Parser = Parsec Void String
 
@@ -89,6 +90,8 @@ data Expr
     -- ^ Represents the access to a property of an object. The first Expr is the object and the string is the property name.
     | ObjectSet Expr String Expr
     -- ^ Represents the setting of a property of an object. The first Expr is the object, the string is the property name and the third Expr is the value to set.
+    | StringInterpolation [String] [Expr]
+    -- ^ Represents a string interpolation in the AHA language. The string is the string with the interpolation and the list of Exprs are the values to interpolate.
     deriving (Show, Eq)
 
 {-
@@ -667,6 +670,66 @@ objectOperations = try objectSet
                 <|> try objectDef
 
 {-
+    ##############################################
+    #       String operations definitions        #
+    ##############################################
+-}
+
+{-|
+Parses a string interpolation from the input. The parser consumes the letter 'f' followed by a string literal with interpolation expressions enclosed in curly braces.
+
+@param s The string to be parsed as a string interpolation.
+@return A parser that produces an expression representing the string interpolation.
+-}
+stringInterpolation :: Parser Expr
+stringInterpolation = do
+    _ <- symbol "f"
+    str <- stringLiteral
+    let interpolatedParts = getInterpolationsFromString str
+    let exprs = parseInterpolations interpolatedParts
+    let parts = splitAndRemoveInterpolations str interpolatedParts
+    return $ StringInterpolation parts exprs
+
+{-|
+Splits a string into parts and removes the interpolation expressions.
+
+@param str The string to split.
+@param interpolationContents The interpolation expressions to remove.
+@return A list of strings representing the parts of the string.
+-}
+splitAndRemoveInterpolations :: String  -> [String] -> [String]
+splitAndRemoveInterpolations str interpolationContents = 
+    let splittedString = foldr (\content acc -> concatMap (splitOn (T.pack ("{" ++ content ++ "}"))) acc) [T.pack str] interpolationContents
+    in map T.unpack splittedString 
+
+{-|
+Gets the interpolation expressions from a string.
+
+@param str The string to get the interpolations from.
+@return A list of strings representing the interpolation expressions.
+-}
+getInterpolationsFromString :: String -> [String]
+getInterpolationsFromString str =
+    let parts = splitOn "{" (T.pack str)
+        exprs = concatMap (\part -> case splitOn "}" part of
+            [exprStr, _] -> [T.unpack exprStr]
+            _ -> []) (tail parts)
+    in exprs
+
+{-|
+Parses the interpolation expressions.
+
+@param interpolationContents The interpolation expressions to parse.
+@return A list of expressions representing the interpolation expressions.
+-}
+parseInterpolations :: [String] -> [Expr]
+parseInterpolations interpolations = 
+    let parsedExprs = map (\exprStr -> case parse expr "" exprStr of
+            Left _ -> StrLit exprStr
+            Right parsedExpr -> parsedExpr) interpolations
+    in parsedExprs
+    
+{-
     ########################################
     #       High level definitions        #
     ########################################
@@ -682,7 +745,8 @@ expr :: Parser Expr
 expr = try functionCall
     <|> try functionDef
     <|> try rangeStatement
-    <|> objectOperations
+    <|> try objectOperations
+    <|> try stringInterpolation
     <|> try listAdd
     <|> try listAppend
     <|> try listRemove
@@ -729,6 +793,7 @@ statement = try assignment
         <|> objectOperations
         <|> try whileLoop
         <|> try importModule
+        <|> try stringInterpolation
         <|> try functionCall
         <|> try rangeStatement
         <|> try doWhileLoop
